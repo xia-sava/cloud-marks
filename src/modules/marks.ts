@@ -48,7 +48,7 @@ export class Marks {
         }
 
         // ファイル書き込み
-        const file = await storage.create(filename, folder, marks);
+        await storage.create(filename, folder, marks);
 
         return true;
     }
@@ -74,8 +74,10 @@ export class Marks {
         console.log(changes);
 
         // 差分適用
-        for (const change of changes) {
-            await Marks.applyChange(bookmark, change);
+        if (changes) {
+            for (const change of changes) {
+                await Marks.applyChange(bookmark, change);
+            }
         }
 
         return true;
