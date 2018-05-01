@@ -1,0 +1,53 @@
+{
+  "name": "sava_marks_test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "watch": "./node_modules/.bin/webpack --watch --progress",
+    "build:prod": "./node_modules/.bin/webpack --mode=production",
+    "build:dev": "./node_modules/.bin/webpack --mode=development --devtool=inline-source-map",
+    "pack": "rm -fr release/* && cp -r dist release/firefox && cp -r manifest.json release/firefox",
+    "zip": "cd release/firefox && zip -r ../firefox.zip ./*",
+    "runfx": "npm build:dev && npm run pack && cd release/firefox && ./node_modules/.bin/web-ext run",
+    "release": "npm rum pack && npm run zip",
+    "develop": "npm run build:dev && npm run pack",
+    "clean": "rm -fr dist/js/* release/*"
+  },
+  "author": "xia@silvia.com",
+  "license": "BSD",
+  "dependencies": {
+    "arr-diff": "^4.0.0",
+    "class-transformer": "^0.1.9",
+    "deep-diff": "^1.0.0",
+    "material-ui": "^1.0.0-beta.42",
+    "prop-types": "^15.6.1",
+    "qs": "^6.5.1",
+    "react": "^16.3.1",
+    "react-dom": "^16.3.1",
+    "reflect-metadata": "^0.1.12",
+    "symbol-tree": "^3.2.2",
+    "url-join": "^4.0.0",
+    "url-parse": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/deep-diff": "0.0.31",
+    "@types/firefox-webext-browser": "^58.0.2",
+    "@types/qs": "^6.5.1",
+    "@types/react": "^16.3.13",
+    "@types/react-dom": "^16.0.5",
+    "@types/url-join": "^0.8.2",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.4",
+    "babel-plugin-transform-es3-member-expression-literals": "^6.22.0",
+    "babel-plugin-transform-es3-property-literals": "^6.22.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "ts-loader": "^4.2.0",
+    "typescript": "^2.8.1",
+    "web-ext": "^2.6.0",
+    "webpack": "^4.4.1",
+    "webpack-cli": "^2.0.13"
+  }
+}

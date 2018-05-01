@@ -1,0 +1,52 @@
+{
+
+  "manifest_version": 2,
+  "name": "Cloud Marks Test",
+  "version": "0.0.1",
+
+  "description": "Cloud Marks Test",
+  "author": "xia@silvia.com",
+  "homepage_url": "https://github.com/xia-sava/",
+
+  "applications": {
+    "gecko": {
+      "id": "{0B97FA0E-451B-11E8-A9DA-41A2F3E0CD91}"
+    }
+  },
+
+  "permissions": [
+    "bookmarks",
+    "identity",
+    "storage",
+    "https://accounts.google.com/*",
+    "https://www.googleapis.com/*"
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+
+  "icons": {
+    "72": "icons/cloud-marks.png"
+  },
+  "background": {
+    "scripts": ["js/background.js"]
+  },
+  "browser_action": {
+    "default_icon": {
+      "72": "icons/cloud-marks.png"
+    },
+    "default_title": "cloud marks",
+    "default_popup": "html/popup.html"
+  },
+  "options_ui": {
+    "page": "html/options.html"
+  },
+
+  "commands": {
+    "sava-marks": {
+      "suggested_key": {
+        "default": "Alt+Up"
+      },
+      "description": "Sava Marks"
+    }
+  }
+
+}
