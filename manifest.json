@@ -1,12 +1,12 @@
 {
 
   "manifest_version": 2,
-  "name": "Cloud Marks Test",
+  "name": "Cloud Marks",
   "version": "0.0.1",
 
-  "description": "Cloud Marks Test",
+  "description": "Cloud Marks",
   "author": "xia@silvia.com",
-  "homepage_url": "https://github.com/xia-sava/",
+  "homepage_url": "https://github.com/xia-sava/cloud-marks",
 
   "applications": {
     "gecko": {
