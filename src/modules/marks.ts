@@ -64,7 +64,7 @@ export class Marks {
             throw new Error('ファイルがまだ作成されていません');
         }
         remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
-        const remoteJSON = await storage.read(remoteFiles[remoteFiles.length - 1]);
+        const remoteJSON = await storage.readContents(remoteFiles[remoteFiles.length - 1]);
         const remote = MarkTreeNode.fromJson(remoteJSON);
 
         // 差分オペレーションを取得

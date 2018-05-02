@@ -17,20 +17,19 @@
   "author": "xia@silvia.com",
   "license": "BSD",
   "dependencies": {
-    "arr-diff": "^4.0.0",
     "class-transformer": "^0.1.9",
+    "crypto-js": "^3.1.9-1",
     "deep-diff": "^1.0.0",
     "material-ui": "^1.0.0-beta.42",
     "prop-types": "^15.6.1",
     "qs": "^6.5.1",
     "react": "^16.3.1",
     "react-dom": "^16.3.1",
-    "reflect-metadata": "^0.1.12",
-    "symbol-tree": "^3.2.2",
     "url-join": "^4.0.0",
     "url-parse": "^1.2.0"
   },
   "devDependencies": {
+    "@types/crypto-js": "^3.1.39",
     "@types/deep-diff": "0.0.31",
     "@types/firefox-webext-browser": "^58.0.2",
     "@types/qs": "^6.5.1",

@@ -1,3 +1,5 @@
+import * as CryptoJS from 'crypto-js';
+
 import {Api, GDriveApi} from './api';
 import {Services} from "./enums";
 import {DirectoryNotFound} from "./exceptions";
@@ -32,6 +34,32 @@ export abstract class Storage {
     public abstract async write(fileInfo: FileInfo, contents: any): Promise<FileInfo>;
     public abstract async read(fileInfo: FileInfo): Promise<any>;
     public abstract async authenticate(): Promise<string>;
+
+    public async writeContents(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
+        const contentsWithHash = {
+            version: 1,
+            hash: this.hashContents(contents),
+            contents: contents,
+        };
+        return await this.write(fileInfo, contentsWithHash);
+    }
+
+    public async readContents(fileInfo: FileInfo): Promise<any> {
+        const json = await this.read(fileInfo);
+        if (!('version' in json && 'hash' in json && 'contents' in json)) {
+            console.log('読込みデータの形式不正');
+            throw new Error('読込みデータの形式不正');
+        }
+        if (json.hash !== this.hashContents(json.contents)) {
+            console.log('読込みデータの整合性エラー');
+            throw new Error('読込みデータの整合性エラー');
+        }
+        return json.contents;
+    }
+
+    protected hashContents(contents: any): string {
+        return CryptoJS.SHA256(JSON.stringify(contents)).toString(CryptoJS.enc.Hex);
+    }
 }
 
 export class GDriveStorage extends Storage {
@@ -105,7 +133,7 @@ export class GDriveStorage extends Storage {
 
         const fileInfo = new FileInfo(json.name, json);
         if (contents) {
-            return await this.write(fileInfo, contents);
+            return await this.writeContents(fileInfo, contents);
         } else {
             return fileInfo;
         }
@@ -115,17 +143,13 @@ export class GDriveStorage extends Storage {
         const fileId = fileInfo.fileObject.id;
         const response = await this.api.patch(`upload/files/${fileId}?uploadType=media`, contents);
         const json = await response.json();
-        console.log(json);
         return new FileInfo(json.name, json);
     }
 
     public async read(fileInfo: FileInfo): Promise<any> {
-        console.log(fileInfo);
         const fileId = fileInfo.fileObject.id;
         const response = await this.api.get(`files/${fileId}`, {alt: 'media'});
-        const json = await response.json();
-        console.log(json);
-        return json;
+        return await response.json();
     }
 
     public async authenticate(): Promise<string> {
