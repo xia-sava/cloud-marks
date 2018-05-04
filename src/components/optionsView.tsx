@@ -139,8 +139,6 @@ export class OptionsView extends Component<Props, States> {
         return (
             <MuiThemeProvider theme={createMuiTheme(theme)}>
                 <Typography component="div" style={{ padding: 8 * 3 }}>
-                    <Button onClick={this.saveSettings.bind(this)}>storage.save</Button>
-                    <Button onClick={Settings.clear}>storage.clear</Button>
                     <div className="panel-section-separator" />
                     {content}
                     <div className="panel-section-separator" />
