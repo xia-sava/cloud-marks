@@ -2,7 +2,7 @@ import * as CryptoJS from 'crypto-js';
 
 import {Api, GDriveApi} from './api';
 import {Services} from "./enums";
-import {DirectoryNotFound} from "./exceptions";
+import {DirectoryNotFoundError, InvalidJsonException} from "./exceptions";
 import {Settings} from "./settings";
 
 type FileObject = any;
@@ -47,12 +47,10 @@ export abstract class Storage {
     public async readContents(fileInfo: FileInfo): Promise<any> {
         const json = await this.read(fileInfo);
         if (!('version' in json && 'hash' in json && 'contents' in json)) {
-            console.log('読込みデータの形式不正');
-            throw new Error('読込みデータの形式不正');
+            throw new InvalidJsonException('読込みデータの形式が不正です');
         }
         if (json.hash !== this.hashContents(json.contents)) {
-            console.log('読込みデータの整合性エラー');
-            throw new Error('読込みデータの整合性エラー');
+            throw new InvalidJsonException('読込みデータの整合性エラーです');
         }
         return json.contents;
     }
@@ -161,9 +159,10 @@ export class GDriveStorage extends Storage {
             if (dirInfo === 'root') {
                 dirInfo = new FileInfo('root', {id: 'root'});
             } else {
+                const dirName = dirInfo;
                 dirInfo = await this.lsFile(dirInfo);
                 if (!dirInfo.filename) {
-                    throw new DirectoryNotFound();
+                    throw new DirectoryNotFoundError(`ディレクトリ ${dirName} が見つかりません`);
                 }
             }
         }

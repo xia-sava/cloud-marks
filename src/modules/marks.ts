@@ -4,6 +4,7 @@ import * as deepDiff from 'deep-diff';
 
 import {Settings} from "./settings";
 import {Storage} from "./storage";
+import {ApplicationError, FileNotFoundError} from "./exceptions";
 
 
 enum MarkType {
@@ -61,7 +62,7 @@ export class Marks {
         let remoteFiles = await storage.lsDir(folderName);
         remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
         if (remoteFiles.length === 0) {
-            throw new Error('ファイルがまだ作成されていません');
+            throw new FileNotFoundError('ブックマークがまだ保存されていません');
         }
         remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
         const remoteJSON = await storage.readContents(remoteFiles[remoteFiles.length - 1]);
@@ -134,7 +135,7 @@ export class Marks {
                 (target as any)[change.path[i]] = change.rhs;
                 break;
             default:
-                throw new Error();
+                throw new ApplicationError('これはバグですわ……');
         }
     }
 
@@ -144,14 +145,14 @@ export class Marks {
         const get = async (id: string): Promise<BookmarkTreeNode> => {
             const bookmark = (await browser.bookmarks.get(id)).pop();
             if (bookmark == undefined) {
-                throw new Error('ブックマークを取得できませんでした');
+                throw new ApplicationError('何故かブックマークを取得できませんでした');
             }
             return bookmark;
         };
         const getTree = async (id: string): Promise<BookmarkTreeNode> => {
             const bookmark = (await browser.bookmarks.getSubTree(id)).pop();
             if (bookmark == undefined) {
-                throw new Error('ブックマークを取得できませんでした');
+                throw new ApplicationError('何故かブックマークを取得できませんでした');
             }
             return bookmark;
         };

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Component } from 'react';
-import { CircularProgress, Divider, MenuList, MenuItem } from 'material-ui';
+import { CircularProgress, Divider, MenuList, MenuItem, Typography } from 'material-ui';
 import { createMuiTheme, MuiThemeProvider } from 'material-ui/styles';
 
 import {MessageType, Message, MessageRequest, MessageResponse, Settings} from "../modules";
@@ -15,6 +15,7 @@ interface States {
     saving: boolean;
     overwriting: boolean;
     merging: boolean;
+    error: string;
 }
 
 export class PopupView extends Component<Props, States> {
@@ -25,6 +26,7 @@ export class PopupView extends Component<Props, States> {
             saving: false,
             overwriting: false,
             merging: false,
+            error: '',
         };
     }
 
@@ -40,10 +42,12 @@ export class PopupView extends Component<Props, States> {
     }
 
     private async statusChanged(request: MessageRequest): Promise<MessageResponse> {
+        console.log(request.message);
         this.setState({
             saving: request.message.saving,
             overwriting: request.message.overwriting,
             merging: request.message.merging,
+            error: request.message.error,
         });
         return {
             success: true,
@@ -53,10 +57,12 @@ export class PopupView extends Component<Props, States> {
 
     private async getBackgroundStatus() {
         const response = await Message.send(MessageType.getStatus);
+        console.log(response.message);
         this.setState({
             saving: response.message.saving,
             overwriting: response.message.overwriting,
             merging: response.message.merging,
+            error: response.message.error,
         })
     }
 
@@ -117,10 +123,22 @@ export class PopupView extends Component<Props, States> {
                 </MenuList>
             );
         }
+        let error;
+        if (this.state.error) {
+            console.log(this.state.error);
+            error = (
+                <div>
+                    <Typography color={'error'}>{this.state.error}</Typography>
+                </div>
+            );
+        } else {
+            error = <div />
+        }
         return (
             <MuiThemeProvider theme={createMuiTheme(theme)}>
                 <div>
                     {content}
+                    {error}
                 </div>
             </MuiThemeProvider>
         );

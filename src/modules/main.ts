@@ -1,13 +1,14 @@
 
 import {Marks} from "./marks";
 import {MessageRequest, MessageResponse} from "./message";
-import {Message, MessageType} from "./index";
+import {ApplicationError, Message, MessageType} from "./index";
 
 
 export class Status {
     private _saving: boolean = false;
     private _overwriting: boolean = false;
     private _merging: boolean = false;
+    private _error: string = '';
 
     get saving(): boolean {
         return this._saving;
@@ -33,11 +34,20 @@ export class Status {
         this.emitStatusChange().then();
     }
 
+    get error(): string {
+        return this._error;
+    }
+    set error(value: string) {
+        this._error = value;
+        this.emitStatusChange().then();
+    }
+
     public dump() {
         return {
             saving: this.saving,
             overwriting: this.overwriting,
             merging: this.merging,
+            error: this.error,
         };
     }
 
@@ -59,28 +69,48 @@ export class Main {
 
     static async save(request: MessageRequest): Promise<MessageResponse> {
         Main.status.saving = true;
+        Main.status.error = '';
 
-        const rc = await Marks.save();
+        try {
+            await Marks.save();
+        } catch (e) {
+            console.log(e);
+
+            if (e instanceof ApplicationError) {
+                Main.status.error = e.message;
+            } else {
+                Main.status.error = e.toString();
+            }
+        }
 
         Main.status.saving = false;
         return {
-            success: rc,
+            success: Main.status.error === '',
             message: {
-                message: `${request.message} セーブしました`,
+                message: `ローカルのブックマークをサーバにセーブしました`,
             },
         };
     }
 
     static async overwrite(request: MessageRequest): Promise<MessageResponse> {
         Main.status.overwriting = true;
+        Main.status.error = '';
 
-        const rc = await Marks.overwrite();
+        try {
+            await Marks.overwrite();
+        } catch (e) {
+            if (e instanceof ApplicationError) {
+                Main.status.error = e.message;
+            } else {
+                Main.status.error = e.toString();
+            }
+        }
 
         Main.status.overwriting = false;
         return {
-            success: rc,
+            success: Main.status.error === '',
             message: {
-                message: `${request.message} ロードしました`,
+                message: `ブックマークをサーバからローカルへ上書きしました`,
             },
         };
     }
