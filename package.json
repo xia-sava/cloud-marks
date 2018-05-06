@@ -4,15 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "watch": "./node_modules/.bin/webpack --watch --progress",
-    "build:prod": "./node_modules/.bin/webpack --mode=production",
-    "build:dev": "./node_modules/.bin/webpack --mode=development --devtool=inline-source-map",
-    "pack": "rm -fr release/* && cp -r dist release/firefox && cp -r manifest.json release/firefox",
-    "zip": "cd release/firefox && zip -r ../firefox.zip ./*",
-    "runfx": "npm build:dev && npm run pack && cd release/firefox && ./node_modules/.bin/web-ext run",
-    "release": "npm rum pack && npm run zip",
-    "develop": "npm run build:dev && npm run pack",
-    "clean": "rm -fr dist/js/* release/*"
+    "watch": "./node_modules/.bin/webpack --watch --mode=development --devtool=inline-source-map",
+    "build:prod": "./node_modules/.bin/webpack --mode=production && cp manifests/manifest.firefox.production.json dist/manifest.json",
+    "build:dev": "./node_modules/.bin/webpack --mode=development --devtool=inline-source-map && cp manifests/manifest.firefox.development.json dist/manifest.json",
+    "release": "npm run build:prod && rm -fr release/* && cp -r dist release/firefox && cd release/firefox && zip -r ../firefox.zip ./*",
+    "clean": "rm -fr dist/js/* dist/manifest.json release/*"
   },
   "author": "xia@silvia.com",
   "license": "MIT",
@@ -43,6 +39,7 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
     "babel-preset-stage-0": "^6.24.1",
+    "no-console-webpack-plugin": "0.0.5",
     "ts-loader": "^4.2.0",
     "typescript": "^2.8.1",
     "web-ext": "^2.6.0",

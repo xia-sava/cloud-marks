@@ -21,7 +21,7 @@
     "https://accounts.google.com/*",
     "https://www.googleapis.com/*"
   ],
-  "content_security_policy": "script-src 'self'; object-src 'self'",
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
 
   "icons": {
     "512": "icons/cloud-marks.png"
@@ -38,15 +38,5 @@
   },
   "options_ui": {
     "page": "html/options.html"
-  },
-
-  "commands": {
-    "sava-marks": {
-      "suggested_key": {
-        "default": "Alt+Up"
-      },
-      "description": "Sava Marks"
-    }
   }
-
 }
