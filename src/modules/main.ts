@@ -77,79 +77,66 @@ export class Main {
             message: {
                 lastLoad: settings.lastLoad,
                 lastSave: settings.lastSave,
-                lastModified: await Marks.getBookmarkLastModifiedTime(),
+                lastModified: await (new Marks()).getBookmarkLastModifiedTime(),
+            },
+        };
+    }
+
+    static async marksAction(request: MessageRequest): Promise<MessageResponse> {
+        Main.status.error = '';
+
+        let message = '';
+        try {
+            const marks = new Marks();
+            switch (request.action) {
+                case MessageType.save:
+                    await marks.save();
+                    message = 'ローカルのブックマークをサーバにセーブしました';
+                    break;
+                case MessageType.load:
+                    await marks.load();
+                    message = 'サーバのブックマークをローカルへロードしました';
+                    break;
+                case MessageType.merge:
+                    await marks.merge();
+                    message = 'サーバのブックマークをローカルへマージしました';
+                    break;
+            }
+        } catch (e) {
+            console.log(e);
+            if (e instanceof ApplicationError) {
+                Main.status.error = e.message;
+            } else {
+                Main.status.error = e.toString();
+            }
+        }
+
+        return {
+            success: Main.status.error === '',
+            message: {
+                message: message,
             },
         };
     }
 
     static async save(request: MessageRequest): Promise<MessageResponse> {
         Main.status.saving = true;
-        Main.status.error = '';
-
-        try {
-            await Marks.save();
-        } catch (e) {
-            console.log(e);
-
-            if (e instanceof ApplicationError) {
-                Main.status.error = e.message;
-            } else {
-                Main.status.error = e.toString();
-            }
-        }
-
+        const response = await Main.marksAction(request);
         Main.status.saving = false;
-        return {
-            success: Main.status.error === '',
-            message: {
-                message: `ローカルのブックマークをサーバにセーブしました`,
-            },
-        };
+        return response;
     }
 
     static async load(request: MessageRequest): Promise<MessageResponse> {
         Main.status.loading = true;
-        Main.status.error = '';
-
-        try {
-            await Marks.load();
-        } catch (e) {
-            if (e instanceof ApplicationError) {
-                Main.status.error = e.message;
-            } else {
-                Main.status.error = e.toString();
-            }
-        }
-
+        const response = await Main.marksAction(request);
         Main.status.loading = false;
-        return {
-            success: Main.status.error === '',
-            message: {
-                message: `サーバのブックマークをローカルへロードしました`,
-            },
-        };
+        return response;
     }
 
     static async merge(request: MessageRequest): Promise<MessageResponse> {
         Main.status.merging = true;
-        Main.status.error = '';
-
-        try {
-            await Marks.merge();
-        } catch (e) {
-            if (e instanceof ApplicationError) {
-                Main.status.error = e.message;
-            } else {
-                Main.status.error = e.toString();
-            }
-        }
-
+        const response = await Main.marksAction(request);
         Main.status.merging = false;
-        return {
-            success: Main.status.error === '',
-            message: {
-                message: `サーバのブックマークをローカルへマージしました`,
-            },
-        };
+        return response;
     }
 }

@@ -30,22 +30,22 @@ class MarkTreeNode {
 }
 
 export class Marks {
-    static async getStorage(): Promise<Storage> {
+    private async getStorage(): Promise<Storage> {
         const settings = await Settings.load();
         return Storage.factory(settings);
     }
 
-    static async save(): Promise<boolean> {
+    public async save(): Promise<boolean> {
         // ローカルのブックマークを取得
         const bookmark = await this.getBookmarkRoot();
-        const marks = Marks.constructFromBookmarks(bookmark);
+        const marks = this.constructFromBookmarks(bookmark);
 
         // 今回の出力先ファイル名
         const timeStamp = Date.now();
         const filename = `bookmarks.${timeStamp}.json`;
 
         // 出力先ディレクトリがストレージになければ作成
-        const storage = await Marks.getStorage();
+        const storage = await this.getStorage();
         const folderName = storage.settings.folderName;
         let folder = await storage.lsFile(folderName);
         if (!folder.filename) {
@@ -62,8 +62,8 @@ export class Marks {
         return true;
     }
 
-    static async load(): Promise<boolean> {
-        const storage = await Marks.getStorage();
+    public async load(): Promise<boolean> {
+        const storage = await this.getStorage();
         const folderName = storage.settings.folderName;
 
         // ストレージのファイル一覧を取得して最新ファイルを取得
@@ -78,14 +78,14 @@ export class Marks {
 
         // 差分オペレーションを取得
         const bookmark = await this.getBookmarkRoot();
-        const local = Marks.constructFromBookmarks(bookmark);
+        const local = this.constructFromBookmarks(bookmark);
         const changes = deepDiff.diff(local, remote);
         console.log(changes);
 
         // 差分適用
         if (changes) {
             for (const change of changes) {
-                await Marks.applyChange(bookmark, change);
+                await this.applyChange(bookmark, change);
             }
         }
 
@@ -96,8 +96,8 @@ export class Marks {
         return true;
     }
 
-    static async merge(): Promise<boolean> {
-        const storage = await Marks.getStorage();
+    public async merge(): Promise<boolean> {
+        const storage = await this.getStorage();
         const folderName = storage.settings.folderName;
 
         // ストレージのファイル一覧を取得して最新ファイルを取得
@@ -112,16 +112,16 @@ export class Marks {
 
         // 差分オペレーションを取得
         const bookmark = await this.getBookmarkRoot();
-        const local = Marks.constructFromBookmarks(bookmark);
-        const merged = Marks.constructFromBookmarks(bookmark);
-        merged.children = Marks.mergeMarkTree(merged.children, remote.children);
+        const local = this.constructFromBookmarks(bookmark);
+        const merged = this.constructFromBookmarks(bookmark);
+        merged.children = this.mergeMarkTree(merged.children, remote.children);
         const changes = deepDiff.diff(local, merged);
         console.log(changes);
 
         // 差分適用
         if (changes) {
             for (const change of changes) {
-                await Marks.applyChange(bookmark, change);
+                await this.applyChange(bookmark, change);
             }
         }
 
@@ -132,7 +132,7 @@ export class Marks {
         return true;
     }
 
-    static async applyChange(target: BookmarkTreeNode, change: deepDiff.IDiff) {
+    private async applyChange(target: BookmarkTreeNode, change: deepDiff.IDiff) {
         let i = -1;
         while (++i < change.path.length - 1) {
             const curr = change.path[i];
@@ -189,7 +189,7 @@ export class Marks {
 
 
 
-    static async getBookmarkRoot(): Promise<BookmarkTreeNode> {
+    private async getBookmarkRoot(): Promise<BookmarkTreeNode> {
         const get = async (id: string): Promise<BookmarkTreeNode> => {
             const bookmark = (await browser.bookmarks.get(id)).pop();
             if (bookmark == undefined) {
@@ -214,7 +214,7 @@ export class Marks {
     }
 
 
-    static async getBookmarkLastModifiedTime(): Promise<number> {
+    public async getBookmarkLastModifiedTime(): Promise<number> {
         const getLatestTime = (bookmark: BookmarkTreeNode): number => {
             const latest: number[] = [];
             latest.push(Math.max(bookmark.dateAdded || 0, bookmark.dateGroupModified || 0));
@@ -223,15 +223,15 @@ export class Marks {
             }
             return Math.max(...latest);
         };
-        const latest = getLatestTime(await Marks.getBookmarkRoot());
+        const latest = getLatestTime(await this.getBookmarkRoot());
         return latest;
     }
 
 
-    static constructFromBookmarks(node: BookmarkTreeNode): MarkTreeNode {
+    private constructFromBookmarks(node: BookmarkTreeNode): MarkTreeNode {
         let children: MarkTreeNode[] = [];
         for (const child of (node.children || [])) {
-            children.push(Marks.constructFromBookmarks(child));
+            children.push(this.constructFromBookmarks(child));
         }
         return new MarkTreeNode(
             (node.type === 'folder') ? MarkType.folder : MarkType.bookmark,
@@ -241,7 +241,7 @@ export class Marks {
         );
     }
 
-    static mergeMarkTree(left: MarkTreeNode[], right: MarkTreeNode[]): MarkTreeNode[] {
+    private mergeMarkTree(left: MarkTreeNode[], right: MarkTreeNode[]): MarkTreeNode[] {
         const map = new Map<string, MarkTreeNode>();
         for (const leftChild of left) {
             map.set(leftChild.toString(), leftChild);
@@ -253,7 +253,7 @@ export class Marks {
                 map.set(key, rightChild);
             }
             else if (leftChild.type === MarkType.folder) {
-                leftChild.children = Marks.mergeMarkTree(leftChild.children, rightChild.children);
+                leftChild.children = this.mergeMarkTree(leftChild.children, rightChild.children);
             }
         }
         const array: MarkTreeNode[] = [];
