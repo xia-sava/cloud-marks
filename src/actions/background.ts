@@ -5,6 +5,7 @@ browser.runtime.onMessage.addListener(
     Message.receive({
         [MessageType.getStatus]: Main.getStatus,
         [MessageType.save]: Main.save,
-        [MessageType.overwrite]: Main.overwrite,
+        [MessageType.load]: Main.load,
+        [MessageType.merge]: Main.merge,
     })
 );

@@ -20,6 +20,10 @@ class MarkTreeNode {
         public children: MarkTreeNode[] = [],
     ) {}
 
+    public toString() {
+        return `${this.type}\t${this.title}\t${this.url}`;
+    }
+
     static fromJson(json: any): MarkTreeNode {
         return new MarkTreeNode(json.type, json.title, json.url, json.children.map(MarkTreeNode.fromJson));
     }
@@ -54,7 +58,7 @@ export class Marks {
         return true;
     }
 
-    static async overwrite(): Promise<boolean> {
+    static async load(): Promise<boolean> {
         const storage = await Marks.getStorage();
         const folderName = storage.settings.folderName;
 
@@ -72,6 +76,38 @@ export class Marks {
         const bookmark = await this.getBookmarkRoot();
         const local = Marks.constructFromBookmarks(bookmark);
         const changes = deepDiff.diff(local, remote);
+        console.log(changes);
+
+        // 差分適用
+        if (changes) {
+            for (const change of changes) {
+                await Marks.applyChange(bookmark, change);
+            }
+        }
+
+        return true;
+    }
+
+    static async merge(): Promise<boolean> {
+        const storage = await Marks.getStorage();
+        const folderName = storage.settings.folderName;
+
+        // ストレージのファイル一覧を取得して最新ファイルを取得
+        let remoteFiles = await storage.lsDir(folderName);
+        remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
+        if (remoteFiles.length === 0) {
+            throw new FileNotFoundError('ブックマークがまだ保存されていません');
+        }
+        remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
+        const remoteJSON = await storage.readContents(remoteFiles[remoteFiles.length - 1]);
+        const remote = MarkTreeNode.fromJson(remoteJSON);
+
+        // 差分オペレーションを取得
+        const bookmark = await this.getBookmarkRoot();
+        const local = Marks.constructFromBookmarks(bookmark);
+        const merged = Marks.constructFromBookmarks(bookmark);
+        merged.children = Marks.mergeMarkTree(merged.children, remote.children);
+        const changes = deepDiff.diff(local, merged);
         console.log(changes);
 
         // 差分適用
@@ -177,5 +213,27 @@ export class Marks {
             node.url,
             children
         );
+    }
+
+    static mergeMarkTree(left: MarkTreeNode[], right: MarkTreeNode[]): MarkTreeNode[] {
+        const map = new Map<string, MarkTreeNode>();
+        for (const leftChild of left) {
+            map.set(leftChild.toString(), leftChild);
+        }
+        for (const rightChild of right) {
+            const key = rightChild.toString();
+            const leftChild = map.get(key);
+            if (!leftChild) {
+                map.set(key, rightChild);
+            }
+            else if (leftChild.type === MarkType.folder) {
+                leftChild.children = Marks.mergeMarkTree(leftChild.children, rightChild.children);
+            }
+        }
+        const array: MarkTreeNode[] = [];
+        for (const element of map.values()) {
+            array.push(element);
+        }
+        return array;
     }
 }

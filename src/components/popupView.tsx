@@ -13,7 +13,7 @@ interface States {
     authenticated: boolean;
 
     saving: boolean;
-    overwriting: boolean;
+    loading: boolean;
     merging: boolean;
     error: string;
 }
@@ -24,7 +24,7 @@ export class PopupView extends Component<Props, States> {
         this.state = {
             authenticated: false,
             saving: false,
-            overwriting: false,
+            loading: false,
             merging: false,
             error: '',
         };
@@ -45,7 +45,7 @@ export class PopupView extends Component<Props, States> {
         console.log(request.message);
         this.setState({
             saving: request.message.saving,
-            overwriting: request.message.overwriting,
+            loading: request.message.loading,
             merging: request.message.merging,
             error: request.message.error,
         });
@@ -60,7 +60,7 @@ export class PopupView extends Component<Props, States> {
         console.log(response.message);
         this.setState({
             saving: response.message.saving,
-            overwriting: response.message.overwriting,
+            loading: response.message.loading,
             merging: response.message.merging,
             error: response.message.error,
         })
@@ -76,9 +76,9 @@ export class PopupView extends Component<Props, States> {
         await Message.send(MessageType.save);
     }
 
-    private async overwriteAction() {
-        this.setState({overwriting: true});
-        await Message.send(MessageType.overwrite);
+    private async loadAction() {
+        this.setState({loading: true});
+        await Message.send(MessageType.load);
     }
 
     private async mergeAction() {
@@ -100,12 +100,12 @@ export class PopupView extends Component<Props, States> {
                         サーバに保存
                         {this.state.saving && <CircularProgress />}
                     </MenuItem>
-                    <MenuItem onClick={this.overwriteAction.bind(this)}>
-                        サーバから読込み（上書き）
-                        {this.state.overwriting && <CircularProgress />}
+                    <MenuItem onClick={this.loadAction.bind(this)}>
+                        サーバから読込み
+                        {this.state.loading && <CircularProgress />}
                     </MenuItem>
                     <MenuItem onClick={this.mergeAction.bind(this)}>
-                        サーバから読込み（マージ）
+                        サーバからマージ
                         {this.state.merging && <CircularProgress />}
                     </MenuItem>
                 </MenuList>

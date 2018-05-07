@@ -6,8 +6,9 @@ import {ApplicationError, Message, MessageType} from "./index";
 
 export class Status {
     private _saving: boolean = false;
-    private _overwriting: boolean = false;
+    private _loading: boolean = false;
     private _merging: boolean = false;
+
     private _error: string = '';
 
     get saving(): boolean {
@@ -18,11 +19,11 @@ export class Status {
         this.emitStatusChange().then();
     }
 
-    get overwriting(): boolean {
-        return this._overwriting;
+    get loading(): boolean {
+        return this._loading;
     }
-    set overwriting(value: boolean) {
-        this._overwriting = value;
+    set loading(value: boolean) {
+        this._loading = value;
         this.emitStatusChange().then();
     }
 
@@ -45,7 +46,7 @@ export class Status {
     public dump() {
         return {
             saving: this.saving,
-            overwriting: this.overwriting,
+            loading: this.loading,
             merging: this.merging,
             error: this.error,
         };
@@ -92,12 +93,12 @@ export class Main {
         };
     }
 
-    static async overwrite(request: MessageRequest): Promise<MessageResponse> {
-        Main.status.overwriting = true;
+    static async load(request: MessageRequest): Promise<MessageResponse> {
+        Main.status.loading = true;
         Main.status.error = '';
 
         try {
-            await Marks.overwrite();
+            await Marks.load();
         } catch (e) {
             if (e instanceof ApplicationError) {
                 Main.status.error = e.message;
@@ -106,11 +107,34 @@ export class Main {
             }
         }
 
-        Main.status.overwriting = false;
+        Main.status.loading = false;
         return {
             success: Main.status.error === '',
             message: {
-                message: `ブックマークをサーバからローカルへ上書きしました`,
+                message: `サーバのブックマークをローカルへロードしました`,
+            },
+        };
+    }
+
+    static async merge(request: MessageRequest): Promise<MessageResponse> {
+        Main.status.merging = true;
+        Main.status.error = '';
+
+        try {
+            await Marks.merge();
+        } catch (e) {
+            if (e instanceof ApplicationError) {
+                Main.status.error = e.message;
+            } else {
+                Main.status.error = e.toString();
+            }
+        }
+
+        Main.status.merging = false;
+        return {
+            success: Main.status.error === '',
+            message: {
+                message: `サーバのブックマークをローカルへマージしました`,
             },
         };
     }

@@ -1,7 +1,7 @@
 
 export enum MessageType {
     save = 'save',
-    overwrite = 'overwrite',
+    load = 'load',
     merge = 'merge',
     getStatus = 'getStatus',
     statusChanged = 'statusChanged',
