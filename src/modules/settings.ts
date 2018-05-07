@@ -31,6 +31,9 @@ export class Settings {
     public serviceSettings: ServiceSetting[] = [];
     public folderName: string = 'cloud_marks';
 
+    public lastSave: number = 0;
+    public lastLoad: number = 0;
+
 
     public constructor() {
         this.serviceSettings[Services.gdrive] = new GDriveServiceSetting();

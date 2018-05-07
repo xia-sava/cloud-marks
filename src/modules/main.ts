@@ -1,7 +1,8 @@
 
 import {Marks} from "./marks";
-import {MessageRequest, MessageResponse} from "./message";
-import {ApplicationError, Message, MessageType} from "./index";
+import {Message, MessageRequest, MessageResponse, MessageType} from "./message";
+import {Settings} from "./settings";
+import {ApplicationError} from "./exceptions";
 
 
 export class Status {
@@ -65,6 +66,19 @@ export class Main {
         return {
             success: true,
             message: Main.status.dump(),
+        };
+    }
+
+    static async getTimes(): Promise<MessageResponse> {
+        const settings = await Settings.load();
+
+        return {
+            success: true,
+            message: {
+                lastLoad: settings.lastLoad,
+                lastSave: settings.lastSave,
+                lastModified: await Marks.getBookmarkLastModifiedTime(),
+            },
         };
     }
 

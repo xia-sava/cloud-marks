@@ -41,7 +41,7 @@ export class Marks {
         const marks = Marks.constructFromBookmarks(bookmark);
 
         // 今回の出力先ファイル名
-        const timeStamp = Math.round((new Date()).getTime() / 1000);
+        const timeStamp = Date.now();
         const filename = `bookmarks.${timeStamp}.json`;
 
         // 出力先ディレクトリがストレージになければ作成
@@ -54,6 +54,10 @@ export class Marks {
 
         // ファイル書き込み
         await storage.create(filename, folder, marks);
+
+        // 最終セーブ日時保存
+        storage.settings.lastSave = Date.now();
+        await storage.settings.save();
 
         return true;
     }
@@ -84,6 +88,10 @@ export class Marks {
                 await Marks.applyChange(bookmark, change);
             }
         }
+
+        // 最終ロード日時保存
+        storage.settings.lastLoad = Date.now();
+        await storage.settings.save();
 
         return true;
     }
@@ -116,6 +124,10 @@ export class Marks {
                 await Marks.applyChange(bookmark, change);
             }
         }
+
+        // 最終ロード日時保存
+        storage.settings.lastLoad = Date.now();
+        await storage.settings.save();
 
         return true;
     }
@@ -199,6 +211,20 @@ export class Marks {
         const mobile = await getTree('mobile______');
         root.children = [menu, toolbar, unfiled, mobile];
         return root;
+    }
+
+
+    static async getBookmarkLastModifiedTime(): Promise<number> {
+        const getLatestTime = (bookmark: BookmarkTreeNode): number => {
+            const latest: number[] = [];
+            latest.push(Math.max(bookmark.dateAdded || 0, bookmark.dateGroupModified || 0));
+            for (const child of bookmark.children || []) {
+                latest.push(getLatestTime(child));
+            }
+            return Math.max(...latest);
+        };
+        const latest = getLatestTime(await Marks.getBookmarkRoot());
+        return latest;
     }
 
 

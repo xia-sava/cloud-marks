@@ -16,6 +16,10 @@ interface States {
     loading: boolean;
     merging: boolean;
     error: string;
+
+    lastSave: number;
+    lastLoad: number;
+    lastModified: number;
 }
 
 export class PopupView extends Component<Props, States> {
@@ -27,6 +31,9 @@ export class PopupView extends Component<Props, States> {
             loading: false,
             merging: false,
             error: '',
+            lastSave: 0,
+            lastLoad: 0,
+            lastModified: 0,
         };
     }
 
@@ -39,6 +46,7 @@ export class PopupView extends Component<Props, States> {
             })
         );
         await this.getBackgroundStatus();
+        await this.getTimes();
     }
 
     private async statusChanged(request: MessageRequest): Promise<MessageResponse> {
@@ -57,13 +65,30 @@ export class PopupView extends Component<Props, States> {
 
     private async getBackgroundStatus() {
         const response = await Message.send(MessageType.getStatus);
-        console.log(response.message);
         this.setState({
             saving: response.message.saving,
             loading: response.message.loading,
             merging: response.message.merging,
             error: response.message.error,
         })
+    }
+
+    private async getTimes() {
+        const response = await Message.send(MessageType.getTimes);
+        console.log(response);
+        this.setState({
+            lastSave: response.message.lastSave,
+            lastLoad: response.message.lastLoad,
+            lastModified: response.message.lastModified,
+        })
+    }
+
+    static formatDatetimeNumber(t: number): string {
+        if (!t) {
+            return 'N/A';
+        } else {
+            return (new Date(t)).toISOString();
+        }
     }
 
     static async openOptionsPage() {
@@ -89,7 +114,7 @@ export class PopupView extends Component<Props, States> {
     render(): JSX.Element {
         const theme = {
             typography: {
-                fontSize: 12,
+                fontSize: 10,
             }
         };
         let content;
@@ -123,6 +148,31 @@ export class PopupView extends Component<Props, States> {
                 </MenuList>
             );
         }
+
+        let times = [];
+        if (this.state.lastSave) {
+            times.push(
+                <Typography>
+                    最終セーブ時刻: {PopupView.formatDatetimeNumber(this.state.lastSave)}
+                </Typography>
+            );
+        }
+        if (this.state.lastLoad) {
+            times.push(
+                <Typography>
+                    最終ロード時刻: {PopupView.formatDatetimeNumber(this.state.lastLoad)}
+                </Typography>
+            );
+        }
+        if (this.state.lastModified) {
+            times.push(
+                <Typography>
+                    最終更新時刻: {PopupView.formatDatetimeNumber(this.state.lastModified)}
+                </Typography>
+            );
+        }
+        const timeList = <div>{times}</div>;
+
         let error;
         if (this.state.error) {
             console.log(this.state.error);
@@ -138,6 +188,7 @@ export class PopupView extends Component<Props, States> {
             <MuiThemeProvider theme={createMuiTheme(theme)}>
                 <div>
                     {content}
+                    {timeList}
                     {error}
                 </div>
             </MuiThemeProvider>
