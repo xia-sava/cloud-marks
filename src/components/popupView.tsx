@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { Component } from 'react';
-import { CircularProgress, Divider, MenuList, MenuItem, Typography } from 'material-ui';
+import { CircularProgress, Divider, ListItemIcon, ListItemText, MenuList, MenuItem, Typography } from 'material-ui';
 import { createMuiTheme, MuiThemeProvider } from 'material-ui/styles';
+import {CloudCircle, CloudDownload, CloudUpload, Settings as SettingsIcon} from '@material-ui/icons';
 
 import {MessageType, Message, MessageRequest, MessageResponse, Settings} from "../modules";
 
@@ -46,7 +47,6 @@ export class PopupView extends Component<Props, States> {
             })
         );
         await this.getBackgroundStatus();
-        await this.getTimes();
     }
 
     private async statusChanged(request: MessageRequest): Promise<MessageResponse> {
@@ -71,24 +71,6 @@ export class PopupView extends Component<Props, States> {
             merging: response.message.merging,
             error: response.message.error,
         })
-    }
-
-    private async getTimes() {
-        const response = await Message.send(MessageType.getTimes);
-        console.log(response);
-        this.setState({
-            lastSave: response.message.lastSave,
-            lastLoad: response.message.lastLoad,
-            lastModified: response.message.lastModified,
-        })
-    }
-
-    static formatDatetimeNumber(t: number): string {
-        if (!t) {
-            return 'N/A';
-        } else {
-            return (new Date(t)).toISOString();
-        }
     }
 
     static async openOptionsPage() {
@@ -117,79 +99,57 @@ export class PopupView extends Component<Props, States> {
                 fontSize: 10,
             }
         };
-        let content;
-        if (this.state.authenticated) {
-            content = (
-                <MenuList>
-                    <MenuItem onClick={this.saveAction.bind(this)}>
-                        サーバに保存
-                        {this.state.saving && <CircularProgress />}
-                    </MenuItem>
-                    <MenuItem onClick={this.loadAction.bind(this)}>
-                        サーバから読込み
-                        {this.state.loading && <CircularProgress />}
-                    </MenuItem>
-                    <MenuItem onClick={this.mergeAction.bind(this)}>
-                        サーバからマージ
-                        {this.state.merging && <CircularProgress />}
-                    </MenuItem>
-                </MenuList>
-            );
-        } else {
-            content = (
-                <MenuList>
-                    <MenuItem onClick={PopupView.openOptionsPage}>
-                        初期設定
-                    </MenuItem>
-                    <Divider />
-                    <MenuItem onClick={PopupView.openOptionsPage}>
-                        クラウドサービスに接続してください。
-                    </MenuItem>
-                </MenuList>
-            );
+        let error = '';
+        let message = '';
+        const disableAction = (
+            ! this.state.authenticated ||
+            this.state.loading ||
+            this.state.saving ||
+            this.state.merging
+        );
+        if (!this.state.authenticated) {
+            message = '設定画面からクラウドサービスに接続してください';
         }
 
-        let times = [];
-        if (this.state.lastSave) {
-            times.push(
-                <Typography>
-                    最終セーブ時刻: {PopupView.formatDatetimeNumber(this.state.lastSave)}
-                </Typography>
-            );
-        }
-        if (this.state.lastLoad) {
-            times.push(
-                <Typography>
-                    最終ロード時刻: {PopupView.formatDatetimeNumber(this.state.lastLoad)}
-                </Typography>
-            );
-        }
-        if (this.state.lastModified) {
-            times.push(
-                <Typography>
-                    最終更新時刻: {PopupView.formatDatetimeNumber(this.state.lastModified)}
-                </Typography>
-            );
-        }
-        const timeList = <div>{times}</div>;
-
-        let error;
         if (this.state.error) {
-            console.log(this.state.error);
-            error = (
-                <div>
-                    <Typography color={'error'}>{this.state.error}</Typography>
-                </div>
-            );
-        } else {
-            error = <div />
+            error = this.state.error;
         }
         return (
             <MuiThemeProvider theme={createMuiTheme(theme)}>
                 <div>
-                    {content}
-                    {timeList}
-                    {error}
+                    <MenuList>
+                        <Divider />
+                        <MenuItem onClick={this.saveAction.bind(this)} disabled={disableAction}>
+                            <ListItemIcon>
+                                {this.state.saving ? <CircularProgress size={24} />: <CloudUpload/>}
+                            </ListItemIcon>
+                            <ListItemText primary="クラウドに保存" />
+                        </MenuItem>
+                        <Divider />
+                        <MenuItem onClick={this.loadAction.bind(this)} disabled={disableAction}>
+                            <ListItemIcon>
+                                {this.state.loading ? <CircularProgress size={24} />: <CloudDownload/>}
+                            </ListItemIcon>
+                            <ListItemText primary="クラウドから読込み" />
+                        </MenuItem>
+                        <Divider />
+                        <MenuItem onClick={this.mergeAction.bind(this)} disabled={disableAction}>
+                            <ListItemIcon>
+                                {this.state.merging ? <CircularProgress size={24} />: <CloudCircle/>}
+                            </ListItemIcon>
+                            <ListItemText primary="クラウドからマージ" />
+                        </MenuItem>
+                        <Divider />
+                        <MenuItem onClick={PopupView.openOptionsPage}>
+                            <ListItemIcon>
+                                <SettingsIcon/>
+                            </ListItemIcon>
+                            <ListItemText primary="設定" />
+                        </MenuItem>
+                        <Divider />
+                    </MenuList>
+                    {message && <Typography>{message}</Typography>}
+                    {error && <Typography color={'error'}>{error}</Typography>}
                 </div>
             </MuiThemeProvider>
         );
