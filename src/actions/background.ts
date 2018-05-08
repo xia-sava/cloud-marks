@@ -8,5 +8,6 @@ browser.runtime.onMessage.addListener(
         [MessageType.save]: Main.save,
         [MessageType.load]: Main.load,
         [MessageType.merge]: Main.merge,
+        [MessageType.sync]: Main.sync,
     })
 );

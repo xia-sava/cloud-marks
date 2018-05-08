@@ -3,6 +3,7 @@ export enum MessageType {
     save = 'save',
     load = 'load',
     merge = 'merge',
+    sync = 'sync',
     getStatus = 'getStatus',
     getTimes = 'getTimes',
     statusChanged = 'statusChanged',

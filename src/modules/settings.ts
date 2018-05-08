@@ -31,8 +31,8 @@ export class Settings {
     public serviceSettings: ServiceSetting[] = [];
     public folderName: string = 'cloud_marks';
 
-    public lastSave: number = 0;
-    public lastLoad: number = 0;
+    public lastSynced: number = 0;
+    public lastBookmarkModify: number = 0;
 
 
     public constructor() {

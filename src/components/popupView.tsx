@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Component } from 'react';
 import { CircularProgress, Divider, ListItemIcon, ListItemText, MenuList, MenuItem, Typography } from 'material-ui';
 import { createMuiTheme, MuiThemeProvider } from 'material-ui/styles';
-import {CloudCircle, CloudDownload, CloudUpload, Settings as SettingsIcon} from '@material-ui/icons';
+import {CloudCircle, CloudDownload, CloudUpload, Settings as SettingsIcon, Sync as SyncIcon} from '@material-ui/icons';
 
 import {MessageType, Message, MessageRequest, MessageResponse, Settings} from "../modules";
 
@@ -16,6 +16,8 @@ interface States {
     saving: boolean;
     loading: boolean;
     merging: boolean;
+    syncing: boolean;
+    message: string;
     error: string;
 
     lastSave: number;
@@ -31,6 +33,8 @@ export class PopupView extends Component<Props, States> {
             saving: false,
             loading: false,
             merging: false,
+            syncing: false,
+            message: '',
             error: '',
             lastSave: 0,
             lastLoad: 0,
@@ -55,6 +59,8 @@ export class PopupView extends Component<Props, States> {
             saving: request.message.saving,
             loading: request.message.loading,
             merging: request.message.merging,
+            syncing: request.message.syncing,
+            message: request.message.message,
             error: request.message.error,
         });
         return {
@@ -69,6 +75,8 @@ export class PopupView extends Component<Props, States> {
             saving: response.message.saving,
             loading: response.message.loading,
             merging: response.message.merging,
+            syncing: response.message.syncing,
+            message: response.message.message,
             error: response.message.error,
         })
     }
@@ -76,6 +84,11 @@ export class PopupView extends Component<Props, States> {
     static async openOptionsPage() {
         await browser.runtime.openOptionsPage();
         window.close();
+    }
+
+    private async syncAction() {
+        this.setState({syncing: true});
+        await Message.send(MessageType.sync);
     }
 
     private async saveAction() {
@@ -99,25 +112,29 @@ export class PopupView extends Component<Props, States> {
                 fontSize: 10,
             }
         };
-        let error = '';
-        let message = '';
+        let message = this.state.message;
         const disableAction = (
             ! this.state.authenticated ||
             this.state.loading ||
             this.state.saving ||
-            this.state.merging
+            this.state.merging ||
+            this.state.syncing
         );
         if (!this.state.authenticated) {
             message = '設定画面からクラウドサービスに接続してください';
         }
 
-        if (this.state.error) {
-            error = this.state.error;
-        }
         return (
             <MuiThemeProvider theme={createMuiTheme(theme)}>
                 <div>
                     <MenuList>
+                        <Divider />
+                        <MenuItem onClick={this.syncAction.bind(this)} disabled={disableAction}>
+                            <ListItemIcon>
+                                {this.state.syncing ? <CircularProgress size={24} />: <SyncIcon/>}
+                            </ListItemIcon>
+                            <ListItemText primary="クラウドと同期" />
+                        </MenuItem>
                         <Divider />
                         <MenuItem onClick={this.saveAction.bind(this)} disabled={disableAction}>
                             <ListItemIcon>
@@ -149,7 +166,7 @@ export class PopupView extends Component<Props, States> {
                         <Divider />
                     </MenuList>
                     {message && <Typography>{message}</Typography>}
-                    {error && <Typography color={'error'}>{error}</Typography>}
+                    {this.state.error && <Typography color={'error'}>{this.state.error}</Typography>}
                 </div>
             </MuiThemeProvider>
         );

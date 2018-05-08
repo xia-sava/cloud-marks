@@ -1,7 +1,7 @@
 import BookmarkTreeNode = browser.bookmarks.BookmarkTreeNode;
 
 import {Settings} from "./settings";
-import {Storage} from "./storage";
+import {FileInfo, Storage} from "./storage";
 import {ApplicationError, FileNotFoundError} from "./exceptions";
 
 
@@ -29,6 +29,8 @@ class MarkTreeNode {
 
 export class Marks {
     private storage?: Storage;
+    private remoteFile?: FileInfo;
+    private remoteFileCreated?: number;
 
     private async getStorage(): Promise<Storage> {
         if (! this.storage) {
@@ -38,7 +40,28 @@ export class Marks {
         return this.storage;
     }
 
-    public async save(): Promise<boolean> {
+    public async sync() {
+        const settings = (await this.getStorage()).settings;
+        const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile();
+        const lastSynced = settings.lastSynced;
+        const lastBookmarkModified = settings.lastBookmarkModify;
+        const localBookmarkModified = await this.getBookmarkLastModifiedTime();
+
+        const needToLoad = lastSynced != remoteFileCreated;
+        const needToSave = Math.max(lastBookmarkModified, lastSynced) < localBookmarkModified;
+
+        console.log({remoteFileCreated, lastSynced, lastBookmarkModified, localBookmarkModified, needToLoad, needToSave});
+        if (needToLoad && needToSave) {
+            await this.merge();
+            await this.save();
+        } else if (needToLoad) {
+            await this.load();
+        } else if (needToSave) {
+            await this.save();
+        }
+    }
+
+    public async save() {
         // ローカルのブックマークを取得
         const bookmark = await this.getBookmarkRoot();
         const marks = this.constructFromBookmarks(bookmark);
@@ -59,18 +82,15 @@ export class Marks {
         await storage.create(filename, folder, marks);
 
         // 最終セーブ日時保存
-        storage.settings.lastSave = Date.now();
+        storage.settings.lastSynced = timeStamp;
         await storage.settings.save();
-
-        return true;
     }
 
-    public async load(): Promise<boolean> {
+    public async load() {
         const storage = await this.getStorage();
-        const folderName = storage.settings.folderName;
 
         // ストレージの最新ファイルを取得
-        const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile(folderName);
+        const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile();
         const remote = MarkTreeNode.fromJson(await storage.readContents(remoteFile));
 
         // 差分を取って適用
@@ -78,18 +98,16 @@ export class Marks {
         await this.applyRemote(remote, bookmark);
 
         // 最終ロード日時保存
-        storage.settings.lastLoad = Date.now();
+        storage.settings.lastSynced = remoteFileCreated;
+        storage.settings.lastBookmarkModify = Date.now();
         await storage.settings.save();
-
-        return true;
     }
 
-    public async merge(): Promise<boolean> {
+    public async merge() {
         const storage = await this.getStorage();
-        const folderName = storage.settings.folderName;
 
         // ストレージの最新ファイルを取得
-        const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile(folderName);
+        const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile();
         const remote = MarkTreeNode.fromJson(await storage.readContents(remoteFile));
 
         // マージ処理
@@ -101,29 +119,31 @@ export class Marks {
         await this.applyRemote(remote, bookmark, true);
 
         // 最終ロード日時保存
-        storage.settings.lastLoad = Date.now();
+        storage.settings.lastSynced = remoteFileCreated;
+        storage.settings.lastBookmarkModify = Date.now();
         await storage.settings.save();
-
-        return true;
     }
 
-    private async getLatestRemoteFile(folderName: string) {
-        const storage = await this.getStorage();
-
+    private async getLatestRemoteFile() {
         // ストレージのファイル一覧を取得して最新ファイルを取得
-        let remoteFiles = await storage.lsDir(folderName);
-        remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
-        if (remoteFiles.length === 0) {
-            throw new FileNotFoundError('ブックマークがまだ保存されていません');
+        if (!this.remoteFile || !this.remoteFileCreated) {
+            const storage = await this.getStorage();
+            const folderName = storage.settings.folderName;
+
+            let remoteFiles = await storage.lsDir(folderName);
+            remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
+            if (remoteFiles.length === 0) {
+                throw new FileNotFoundError('ブックマークがまだ保存されていません');
+            }
+            remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
+            this.remoteFile = remoteFiles[remoteFiles.length - 1];
+            this.remoteFileCreated = 0;
+            const match = this.remoteFile.filename.match(/\d+/);
+            if (match) {
+                this.remoteFileCreated = parseInt(match[0]);
+            }
         }
-        remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
-        const remoteFile = remoteFiles[remoteFiles.length - 1];
-        let remoteFileCreated = 0;
-        const match = remoteFile.filename.match(/\d+/);
-        if (match) {
-            remoteFileCreated = parseInt(match[0]);
-        }
-        return {remoteFile, remoteFileCreated};
+        return {remoteFile: this.remoteFile, remoteFileCreated: this.remoteFileCreated};
     }
 
     private async applyRemote(remote: MarkTreeNode, bookmark: BookmarkTreeNode, merge = false) {
@@ -167,7 +187,6 @@ export class Marks {
 
     private async createBookmark(parentId: string, mark: MarkTreeNode,
                                  index: number | undefined = undefined) {
-        console.log('作成', parentId, index, mark);
         const added = await browser.bookmarks.create({
             parentId: parentId,
             index: index,
@@ -184,7 +203,6 @@ export class Marks {
     };
 
     private async removeBookmark(target: BookmarkTreeNode) {
-        console.log('削除', target);
         if (target.type === 'folder') {
             await browser.bookmarks.removeTree(target.id);
         } else {
@@ -193,7 +211,6 @@ export class Marks {
     }
 
     private async updateBookmark(target: BookmarkTreeNode, modify: MarkTreeNode) {
-        console.log('更新', target, modify);
         return await browser.bookmarks.update(target.id, {
             title: modify.title,
             url: modify.url,

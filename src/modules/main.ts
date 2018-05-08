@@ -9,7 +9,9 @@ export class Status {
     private _saving: boolean = false;
     private _loading: boolean = false;
     private _merging: boolean = false;
+    private _syncing: boolean = false;
 
+    private _message: string = '';
     private _error: string = '';
 
     get saving(): boolean {
@@ -36,10 +38,34 @@ export class Status {
         this.emitStatusChange().then();
     }
 
+    get syncing(): boolean {
+        return this._syncing;
+    }
+    set syncing(value: boolean) {
+        this._syncing = value;
+        this.emitStatusChange().then();
+    }
+
+    get message(): string {
+        return this._message;
+    }
+    set message(value: string) {
+        if (value) {
+            const date = new Date();
+            value = `${date.toLocaleDateString()} ${date.toLocaleTimeString()} ${value}`;
+        }
+        this._message = value;
+        this.emitStatusChange().then();
+    }
+
     get error(): string {
         return this._error;
     }
     set error(value: string) {
+        if (value) {
+            const date = new Date();
+            value = `${date.toLocaleDateString()} ${date.toLocaleTimeString()} ${value}`;
+        }
         this._error = value;
         this.emitStatusChange().then();
     }
@@ -49,6 +75,8 @@ export class Status {
             saving: this.saving,
             loading: this.loading,
             merging: this.merging,
+            syncing: this.syncing,
+            message: this.message,
             error: this.error,
         };
     }
@@ -75,14 +103,14 @@ export class Main {
         return {
             success: true,
             message: {
-                lastLoad: settings.lastLoad,
-                lastSave: settings.lastSave,
+                lastSynced: settings.lastSynced,
                 lastModified: await (new Marks()).getBookmarkLastModifiedTime(),
             },
         };
     }
 
     static async marksAction(request: MessageRequest): Promise<MessageResponse> {
+        Main.status.message = '';
         Main.status.error = '';
 
         let message = '';
@@ -101,8 +129,14 @@ export class Main {
                     await marks.merge();
                     message = 'サーバのブックマークをローカルへマージしました';
                     break;
+                case MessageType.sync:
+                    await marks.sync();
+                    message = 'サーバのブックマークをローカルと同期しました';
+                    break;
             }
-        } catch (e) {
+            Main.status.message = message;
+        }
+        catch (e) {
             console.log(e, e.stack);
             if (e instanceof ApplicationError) {
                 Main.status.error = e.message;
@@ -137,6 +171,13 @@ export class Main {
         Main.status.merging = true;
         const response = await Main.marksAction(request);
         Main.status.merging = false;
+        return response;
+    }
+
+    static async sync(request: MessageRequest): Promise<MessageResponse> {
+        Main.status.syncing = true;
+        const response = await Main.marksAction(request);
+        Main.status.syncing = false;
         return response;
     }
 }

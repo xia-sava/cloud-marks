@@ -7,7 +7,7 @@ import {Settings} from "./settings";
 
 type FileObject = any;
 
-class FileInfo {
+export class FileInfo {
     constructor(
         public filename: string,
         public fileObject: FileObject
