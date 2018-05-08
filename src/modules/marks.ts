@@ -116,11 +116,17 @@ export class Marks {
         merged.children = this.mergeMarkTree(merged.children, remote.children);
 
         // 差分を取って適用
-        await this.applyRemote(remote, bookmark, true);
+        const modified = await this.applyRemote(merged, bookmark);
 
         // 最終ロード日時保存
+        if (modified) {
+            // マージ更新の場合は結果がサーバのファイルと一致しないので
+            // 要セーブフラグが立つように上手い事やる
+            storage.settings.lastBookmarkModify = 0;
+        } else {
+            storage.settings.lastBookmarkModify = Date.now();
+        }
         storage.settings.lastSynced = remoteFileCreated;
-        storage.settings.lastBookmarkModify = Date.now();
         await storage.settings.save();
     }
 
@@ -146,27 +152,28 @@ export class Marks {
         return {remoteFile: this.remoteFile, remoteFileCreated: this.remoteFileCreated};
     }
 
-    private async applyRemote(remote: MarkTreeNode, bookmark: BookmarkTreeNode, merge = false) {
+    private async applyRemote(remote: MarkTreeNode, bookmark: BookmarkTreeNode): Promise<boolean> {
         if (this.diffMark(remote, bookmark)) {
             const parentId = bookmark.parentId;
             const index = bookmark.index;
             if (parentId) {
                 if (remote.children.length) {
-                    if (!merge) {
-                        await this.removeBookmark(bookmark);
-                    }
+                    await this.removeBookmark(bookmark);
                     await this.createBookmark(parentId, remote, index)
                 } else {
                     await this.updateBookmark(bookmark, remote);
                 }
             }
-            return;
+            return true;
         }
         if (bookmark.children) {
+            let rc = false;
             for (const i in bookmark.children) {
-                await this.applyRemote(remote.children[i], bookmark.children[i], merge);
+                rc = rc || await this.applyRemote(remote.children[i], bookmark.children[i]);
             }
+            return rc;
         }
+        return false;
     }
 
     private diffMark(remote: MarkTreeNode, bookmark: BookmarkTreeNode): boolean {
@@ -184,6 +191,17 @@ export class Marks {
         }
         return false;
     }
+
+    // private async createBookmark(parentId: string, mark: MarkTreeNode,
+    //                              index: number | undefined = undefined) {
+    //     console.log('追加', parentId, index, mark);
+    // };
+    // private async removeBookmark(target: BookmarkTreeNode) {
+    //     console.log('削除', target);
+    // }
+    // private async updateBookmark(target: BookmarkTreeNode, modify: MarkTreeNode) {
+    //     console.log('更新', target, modify);
+    // }
 
     private async createBookmark(parentId: string, mark: MarkTreeNode,
                                  index: number | undefined = undefined) {
