@@ -1,7 +1,5 @@
 import BookmarkTreeNode = browser.bookmarks.BookmarkTreeNode;
 
-import * as deepDiff from 'deep-diff';
-
 import {Settings} from "./settings";
 import {Storage} from "./storage";
 import {ApplicationError, FileNotFoundError} from "./exceptions";
@@ -30,9 +28,14 @@ class MarkTreeNode {
 }
 
 export class Marks {
+    private storage?: Storage;
+
     private async getStorage(): Promise<Storage> {
-        const settings = await Settings.load();
-        return Storage.factory(settings);
+        if (! this.storage) {
+            const settings = await Settings.load();
+            this.storage = Storage.factory(settings);
+        }
+        return this.storage;
     }
 
     public async save(): Promise<boolean> {
@@ -66,28 +69,13 @@ export class Marks {
         const storage = await this.getStorage();
         const folderName = storage.settings.folderName;
 
-        // ストレージのファイル一覧を取得して最新ファイルを取得
-        let remoteFiles = await storage.lsDir(folderName);
-        remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
-        if (remoteFiles.length === 0) {
-            throw new FileNotFoundError('ブックマークがまだ保存されていません');
-        }
-        remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
-        const remoteJSON = await storage.readContents(remoteFiles[remoteFiles.length - 1]);
-        const remote = MarkTreeNode.fromJson(remoteJSON);
+        // ストレージの最新ファイルを取得
+        const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile(folderName);
+        const remote = MarkTreeNode.fromJson(await storage.readContents(remoteFile));
 
-        // 差分オペレーションを取得
-        const bookmark = await this.getBookmarkRoot();
-        const local = this.constructFromBookmarks(bookmark);
-        const changes = deepDiff.diff(local, remote);
-        console.log(changes);
-
-        // 差分適用
-        if (changes) {
-            for (const change of changes) {
-                await this.applyChange(bookmark, change);
-            }
-        }
+        // 差分を取って適用
+        let bookmark = await this.getBookmarkRoot();
+        await this.applyRemote(remote, bookmark);
 
         // 最終ロード日時保存
         storage.settings.lastLoad = Date.now();
@@ -100,30 +88,17 @@ export class Marks {
         const storage = await this.getStorage();
         const folderName = storage.settings.folderName;
 
-        // ストレージのファイル一覧を取得して最新ファイルを取得
-        let remoteFiles = await storage.lsDir(folderName);
-        remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
-        if (remoteFiles.length === 0) {
-            throw new FileNotFoundError('ブックマークがまだ保存されていません');
-        }
-        remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
-        const remoteJSON = await storage.readContents(remoteFiles[remoteFiles.length - 1]);
-        const remote = MarkTreeNode.fromJson(remoteJSON);
+        // ストレージの最新ファイルを取得
+        const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile(folderName);
+        const remote = MarkTreeNode.fromJson(await storage.readContents(remoteFile));
 
-        // 差分オペレーションを取得
-        const bookmark = await this.getBookmarkRoot();
-        const local = this.constructFromBookmarks(bookmark);
+        // マージ処理
+        let bookmark = await this.getBookmarkRoot();
         const merged = this.constructFromBookmarks(bookmark);
         merged.children = this.mergeMarkTree(merged.children, remote.children);
-        const changes = deepDiff.diff(local, merged);
-        console.log(changes);
 
-        // 差分適用
-        if (changes) {
-            for (const change of changes) {
-                await this.applyChange(bookmark, change);
-            }
-        }
+        // 差分を取って適用
+        await this.applyRemote(remote, bookmark, true);
 
         // 最終ロード日時保存
         storage.settings.lastLoad = Date.now();
@@ -132,61 +107,121 @@ export class Marks {
         return true;
     }
 
-    private async applyChange(target: BookmarkTreeNode, change: deepDiff.IDiff) {
-        let i = -1;
-        while (++i < change.path.length - 1) {
-            const curr = change.path[i];
-            if (curr === 'children' && target.children != undefined) {
-                target = target.children[parseInt(change.path[++i])];
-            }
+    private async getLatestRemoteFile(folderName: string) {
+        const storage = await this.getStorage();
+
+        // ストレージのファイル一覧を取得して最新ファイルを取得
+        let remoteFiles = await storage.lsDir(folderName);
+        remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
+        if (remoteFiles.length === 0) {
+            throw new FileNotFoundError('ブックマークがまだ保存されていません');
         }
-        switch (change.kind) {
-            case 'A':
-                console.log('配列', target, change);
-                if (change.item && target.children && change.index) {
-                    switch (change.item.kind) {
-                        case 'D':
-                            console.log('配列削除', target.children[change.index].id, target.children[change.index].title, target.children[change.index].url);
-                            if (target.children[change.index].type === 'folder') {
-                                await browser.bookmarks.removeTree(target.children[change.index].id);
-                            } else {
-                                await browser.bookmarks.remove(target.children[change.index].id);
-                            }
-                            delete target.children[change.index];
-                            break;
-                        case 'N':
-                            const newBookmark = async (parentId: string, bookmark: {title: string, url: string, children: any[]}, index: number | undefined = undefined) => {
-                                const bmParams = {
-                                    parentId: parentId,
-                                    index: index,
-                                    title: bookmark.title,
-                                    url: bookmark.url,
-                                };
-                                console.log('新規', bmParams);
-                                const added = await browser.bookmarks.create(bmParams);
-                                if (added) {
-                                    for (const child of bookmark.children) {
-                                        await newBookmark(target.id, child);
-                                    }
-                                }
-                            };
-                            console.log('配列新規', target, change.item.rhs);
-                            await newBookmark(target.id, change.item.rhs, change.index);
-                            target.children[change.index] = change.item.rhs;
-                            break;
+        remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
+        const remoteFile = remoteFiles[remoteFiles.length - 1];
+        let remoteFileCreated = 0;
+        const match = remoteFile.filename.match(/\d+/);
+        if (match) {
+            remoteFileCreated = parseInt(match[0]);
+        }
+        return {remoteFile, remoteFileCreated};
+    }
+
+    private async applyRemote(remote: MarkTreeNode, bookmark: BookmarkTreeNode, merge = false) {
+        if (this.diffMark(remote, bookmark)) {
+            const parentId = bookmark.parentId;
+            const index = bookmark.index;
+            if (parentId) {
+                if (remote.children.length) {
+                    if (!merge) {
+                        await this.removeBookmark(bookmark);
                     }
+                    await this.createBookmark(parentId, remote, index)
+                } else {
+                    await this.updateBookmark(bookmark, remote);
                 }
-                break;
-            case 'E':
-                console.log('変更', target.id, change.path[i], change.rhs);
-                await browser.bookmarks.update(target.id, {[change.path[i]]: change.rhs});
-                (target as any)[change.path[i]] = change.rhs;
-                break;
-            default:
-                throw new ApplicationError('これはバグですわ……');
+            }
+            return;
+        }
+        if (bookmark.children) {
+            for (const i in bookmark.children) {
+                await this.applyRemote(remote.children[i], bookmark.children[i], merge);
+            }
         }
     }
 
+    private diffMark(remote: MarkTreeNode, bookmark: BookmarkTreeNode): boolean {
+        if (remote.title !== bookmark.title) {
+            return true;
+        }
+        if (remote.url !== (bookmark.url || '')) {
+            return true;
+        }
+        // children の比較は個数まで，中身の比較は他ループに任せる
+        if (remote.type === MarkType.folder) {
+            if (! bookmark.children || (remote.children.length !== bookmark.children.length)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private async createBookmark(parentId: string, mark: MarkTreeNode,
+                                 index: number | undefined = undefined) {
+        console.log('作成', parentId, index, mark);
+        const added = await browser.bookmarks.create({
+            parentId: parentId,
+            index: index,
+            title: mark.title,
+            url: (mark.type === MarkType.bookmark)? mark.url: undefined,
+        });
+        if (! added) {
+            throw new ApplicationError('ブックマークの作成でエラーが発生しました');
+        }
+        for (const child of mark.children) {
+            await this.createBookmark(added.id, child);
+        }
+        return added;
+    };
+
+    private async removeBookmark(target: BookmarkTreeNode) {
+        console.log('削除', target);
+        if (target.type === 'folder') {
+            await browser.bookmarks.removeTree(target.id);
+        } else {
+            await browser.bookmarks.remove(target.id);
+        }
+    }
+
+    private async updateBookmark(target: BookmarkTreeNode, modify: MarkTreeNode) {
+        console.log('更新', target, modify);
+        return await browser.bookmarks.update(target.id, {
+            title: modify.title,
+            url: modify.url,
+        })
+    }
+
+
+    private mergeMarkTree(left: MarkTreeNode[], right: MarkTreeNode[]): MarkTreeNode[] {
+        const map = new Map<string, MarkTreeNode>();
+        for (const leftChild of left) {
+            map.set(leftChild.toString(), leftChild);
+        }
+        for (const rightChild of right) {
+            const key = rightChild.toString();
+            const leftChild = map.get(key);
+            if (!leftChild) {
+                map.set(key, rightChild);
+            }
+            else if (leftChild.type === MarkType.folder) {
+                leftChild.children = this.mergeMarkTree(leftChild.children, rightChild.children);
+            }
+        }
+        const array: MarkTreeNode[] = [];
+        for (const element of map.values()) {
+            array.push(element);
+        }
+        return array;
+    }
 
 
     private async getBookmarkRoot(): Promise<BookmarkTreeNode> {
@@ -231,7 +266,9 @@ export class Marks {
     private constructFromBookmarks(node: BookmarkTreeNode): MarkTreeNode {
         let children: MarkTreeNode[] = [];
         for (const child of (node.children || [])) {
-            children.push(this.constructFromBookmarks(child));
+            if (child.type !== 'separator') {
+                children.push(this.constructFromBookmarks(child));
+            }
         }
         return new MarkTreeNode(
             (node.type === 'folder') ? MarkType.folder : MarkType.bookmark,
@@ -239,27 +276,5 @@ export class Marks {
             node.url,
             children
         );
-    }
-
-    private mergeMarkTree(left: MarkTreeNode[], right: MarkTreeNode[]): MarkTreeNode[] {
-        const map = new Map<string, MarkTreeNode>();
-        for (const leftChild of left) {
-            map.set(leftChild.toString(), leftChild);
-        }
-        for (const rightChild of right) {
-            const key = rightChild.toString();
-            const leftChild = map.get(key);
-            if (!leftChild) {
-                map.set(key, rightChild);
-            }
-            else if (leftChild.type === MarkType.folder) {
-                leftChild.children = this.mergeMarkTree(leftChild.children, rightChild.children);
-            }
-        }
-        const array: MarkTreeNode[] = [];
-        for (const element of map.values()) {
-            array.push(element);
-        }
-        return array;
     }
 }

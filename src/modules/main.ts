@@ -103,7 +103,7 @@ export class Main {
                     break;
             }
         } catch (e) {
-            console.log(e);
+            console.log(e, e.stack);
             if (e instanceof ApplicationError) {
                 Main.status.error = e.message;
             } else {
