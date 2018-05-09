@@ -176,7 +176,7 @@ export class Marks {
         return false;
     }
 
-    private diffMark(remote: MarkTreeNode, bookmark: BookmarkTreeNode): boolean {
+    private diffMark(remote: MarkTreeNode, bookmark: BookmarkTreeNode | MarkTreeNode): boolean {
         if (remote.title !== bookmark.title) {
             return true;
         }
@@ -235,27 +235,62 @@ export class Marks {
         })
     }
 
+    private findMarkArray(item: MarkTreeNode, array: MarkTreeNode[]): {found: boolean, similar: boolean, index: number} {
+        for (let i = 0; i < array.length; ++i) {
+            const mark = array[i];
+            if (!this.diffMark(mark, item)) {
+                // 完全一致アイテムあり
+                return {found: true, similar: false, index: i};
+            }
+        }
+        for (let i = 0; i < array.length; ++i) {
+            const mark = array[i];
+            if (mark.type !== item.type) {
+                continue;
+            }
+            if (mark.type === MarkType.bookmark) {
+                if (mark.title === item.title || mark.url === item.url) {
+                    // タイトルか URL どちらか一致するブックマークあり
+                    return {found: false, similar: true, index: i};
+                }
+            } else {
+                if (mark.title === item.title) {
+                    // タイトルが一致するフォルダあり
+                    return {found: false, similar: true, index: i};
+                }
+                if (mark.children.length === item.children.length) {
+                    let j = 0;
+                    for (j = 0; j < mark.children.length; ++j) {
+                        if (this.diffMark(item.children[j], mark.children[j])) {
+                            break;
+                        }
+                    }
+                    if (j >= mark.children.length) {
+                        // タイトルは異なるが配下が全部一致するフォルダあり
+                        return {found: false, similar: true, index: i};
+                    }
+                }
+            }
+        }
+        return {found: false, similar: false, index: -1};
+    }
 
     private mergeMarkTree(left: MarkTreeNode[], right: MarkTreeNode[]): MarkTreeNode[] {
-        const map = new Map<string, MarkTreeNode>();
-        for (const leftChild of left) {
-            map.set(leftChild.toString(), leftChild);
-        }
-        for (const rightChild of right) {
-            const key = rightChild.toString();
-            const leftChild = map.get(key);
-            if (!leftChild) {
-                map.set(key, rightChild);
+        for (const rm of right) {
+            const {found, similar, index} = this.findMarkArray(rm, left);
+            if (found) {
+                left[index].children = this.mergeMarkTree(left[index].children, rm.children);
             }
-            else if (leftChild.type === MarkType.folder) {
-                leftChild.children = this.mergeMarkTree(leftChild.children, rightChild.children);
+            else if (similar) {
+                left[index].title = rm.title;
+                left[index].url = rm.url;
+                left[index].children = this.mergeMarkTree(left[index].children, rm.children);
+            }
+            else {
+                left.push(rm);
             }
         }
-        const array: MarkTreeNode[] = [];
-        for (const element of map.values()) {
-            array.push(element);
-        }
-        return array;
+        return left;
     }
 
 
