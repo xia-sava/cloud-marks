@@ -6,12 +6,21 @@ import {Services} from './enums';
 const localStorageKey = 'cloud_marks_settings';
 
 export abstract class ServiceSetting {
-    public _authInfo: string = '';
+    public defaultApiKey = '';
+
+    private _apiKey: string = '';
+    private _authInfo: string = '';
+
+    get apiKey(): string {
+        return this._apiKey;
+    }
+    set apiKey(value: string) {
+        this._apiKey = value;
+    }
 
     public get authInfo(): string {
         return this._authInfo;
     }
-
     public set authInfo(value: string) {
         this._authInfo = value;
     }
@@ -22,6 +31,7 @@ export abstract class ServiceSetting {
 }
 
 export class GDriveServiceSetting extends ServiceSetting {
+    public defaultApiKey = '974355595437-vach47on7c5mpnkfrpmehlgvdnn9ih2e.apps.googleusercontent.com';
 }
 
 export class Settings {
@@ -48,10 +58,16 @@ export class Settings {
         return this.currentServiceSetting.authenticated;
     }
 
+    public get apiKey(): string {
+        return this.currentServiceSetting.apiKey;
+    }
+    public set apiKey(value: string) {
+        this.currentServiceSetting.apiKey = value;
+    }
+
     public get authInfo(): string {
         return this.currentServiceSetting.authInfo;
     }
-
     public set authInfo(value: string) {
         this.currentServiceSetting.authInfo = value;
     }

@@ -1,8 +1,9 @@
 import * as React from 'react';
 import {Component} from 'react';
-import grey from 'material-ui/colors/grey';
 import {createMuiTheme, MuiThemeProvider} from 'material-ui/styles';
-import {CircularProgress, Button, /*Tab, Tabs,*/ TextField, Typography} from 'material-ui';
+import {CircularProgress, Dialog, DialogContent, DialogContentText, Divider} from 'material-ui';
+import {FormControlLabel, MenuList, MenuItem, Switch, TextField, Typography} from 'material-ui';
+import {HelpOutline as HelpIcon} from '@material-ui/icons';
 
 import {Services, Settings, Storage} from '../modules';
 
@@ -15,7 +16,10 @@ interface States {
 
     currentService: Services;
     folderName: string;
+    apiKey: string;
     authenticated: boolean;
+
+    helpApiKeyOpened: boolean;
 }
 
 export class OptionsView extends Component<Props, States> {
@@ -28,7 +32,9 @@ export class OptionsView extends Component<Props, States> {
             settingsPrepared: false,
             currentService: Services.gdrive,
             folderName: 'cloud_marks',
+            apiKey: '',
             authenticated: false,
+            helpApiKeyOpened: false,
         };
         Settings.load().then((settings: Settings) => {
             this.settings = settings;
@@ -36,6 +42,7 @@ export class OptionsView extends Component<Props, States> {
                 settingsPrepared: true,
                 currentService: settings.currentService,
                 folderName: settings.folderName,
+                apiKey: settings.apiKey,
                 authenticated: settings.authenticated,
             })
         });
@@ -50,19 +57,35 @@ export class OptionsView extends Component<Props, States> {
     //     await this.settings.save();
     // }
 
-    private async revokeCloudService() {
-        this.settings.authInfo = '';
+    private async onChangeCloudAuth(event: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
+        if (checked) {
+            const storage = Storage.factory(this.settings);
+            this.settings.authInfo = await storage.authenticate();
+            this.setState({
+                authenticated: this.settings.authenticated,
+            });
+            await this.settings.save();
+        } else {
+            this.settings.authInfo = '';
+            this.setState({
+                authenticated: this.settings.authenticated,
+            });
+            await this.settings.save();
+        }
+    }
+
+    private async onChangeApiKey(event: React.ChangeEvent<HTMLInputElement>) {
+        this.settings.apiKey = event.target.value;
         this.setState({
-            authenticated: this.settings.authenticated,
+            apiKey: this.settings.apiKey,
         });
         await this.settings.save();
     }
 
-    private async startCloudServiceAuth() {
-        const storage = Storage.factory(this.settings);
-        this.settings.authInfo = await storage.authenticate();
+    private async setDefaultApiKey() {
+        this.settings.apiKey = this.settings.currentServiceSetting.defaultApiKey;
         this.setState({
-            authenticated: this.settings.authenticated,
+            apiKey: this.settings.apiKey,
         });
         await this.settings.save();
     }
@@ -75,28 +98,33 @@ export class OptionsView extends Component<Props, States> {
         await this.settings.save();
     }
 
-    private async saveSettings() {
-        await this.settings.save();
-    }
-
     public render() {
         const theme = {
-            palette: {
-                primary: {
-                    main: grey[300],
-                },
-            },
-            typography: {
-                fontStyleButtonFontSize: 12,
-                fontSize: 12,
-            },
         };
-        let content;
-        if (this.state.settingsPrepared) {
-            // 通常オプション画面
-            content = (
+        if (!this.state.settingsPrepared) {
+            // settings ロード中
+            return (
+                <MuiThemeProvider theme={createMuiTheme(theme)}>
+                    <div style={{minHeight: '100px', 'textAlign': 'center'}}>
+                        <CircularProgress />
+                    </div>
+                </MuiThemeProvider>
+            );
+        }
+        return (
+            <MuiThemeProvider theme={createMuiTheme(theme)}>
                 <div>
-                    <h2>ストレージサービス設定</h2>
+                    <Divider/>
+                    <Typography variant={'headline'}>Cloud Marks 設定</Typography>
+                    <div style={{ padding: 24 }}>
+                        <Typography variant={'title'}>サービス上のフォルダ名</Typography>
+                        <TextField value={this.state.folderName}
+                                   onChange={this.onChangeFolderName.bind(this)}
+                                   fullWidth={true}
+                        />
+                    </div>
+                    <Divider style={{marginBottom: 24}}/>
+                    <Typography variant={'headline'}>ストレージサービス設定</Typography>
                     {/*
                     <Tabs value={this.state.currentService}
                           onChange={this.onSelectedServiceChanged.bind(this)}
@@ -106,43 +134,49 @@ export class OptionsView extends Component<Props, States> {
                     </Tabs>
                     */}
                     {this.state.currentService === Services.gdrive && (
-                        <div style={{ padding: 8 * 3 }}>
-                            <h3>Google Drive サービスとの接続</h3>
-                            {this.state.authenticated ?
-                                <Button variant="raised" onClick={this.revokeCloudService.bind(this)}>
-                                    接続解除
-                                </Button>
-                                :
-                                <Button variant="raised" onClick={this.startCloudServiceAuth.bind(this)}>
-                                    接続する
-                                </Button>
-                            }
+                        <div style={{ padding: 24 }}>
+                            <Typography variant={'title'}>
+                                Google Drive API キー
+                                <HelpIcon style={{fontSize: 16}}
+                                          onClick={() => this.setState({helpApiKeyOpened: true})}/>
+                            </Typography>
+                            <TextField value={this.state.apiKey}
+                                       onChange={this.onChangeApiKey.bind(this)}
+                                       fullWidth={true}
+                            />
+                            <Dialog open={this.state.helpApiKeyOpened}
+                                    onClick={() => this.setState({helpApiKeyOpened: false})}>
+                                <DialogContent>
+                                    <DialogContentText>
+                                        <Typography>
+                                            <a href="https://console.developers.google.com/" target="_blank">Google API Console</a> から
+                                            Google Drive フルアクセス権限（scope "https://www.googleapis.com/auth/drive"）を
+                                            セットした API キーを取得してください．
+                                        </Typography>
+                                        <MenuList>
+                                            <MenuItem onClick={this.setDefaultApiKey.bind(this)}>
+                                                とりあえずデフォルトのキーを使う（たぶん接続時に警告が出ます）
+                                            </MenuItem>
+                                        </MenuList>
+                                    </DialogContentText>
+                                </DialogContent>
+                            </Dialog>
+                            <Divider style={{marginBottom: 24}} light={true} inset={true} />
+
+                            <Typography variant={'title'}>
+                                Google Drive サービスとの接続
+                            </Typography>
+                            <FormControlLabel control={
+                                <Switch checked={this.state.authenticated}
+                                        onChange={this.onChangeCloudAuth.bind(this)}
+                                        color={'primary'}
+                                        disabled={this.state.apiKey === ''}
+                                />
+                            } label={this.state.authenticated ? '接続済み' : '未接続'} />
                         </div>
                     )}
-                    <div className="panel-section-separator" />
-                    <h2>Cloud Marks 設定</h2>
-                    <div style={{ padding: 8 * 3 }}>
-                        <TextField label="サービス上のフォルダ名" value={this.state.folderName}
-                                   onChange={this.onChangeFolderName.bind(this)} />
-                    </div>
-
+                    <Divider/>
                 </div>
-            );
-        } else {
-            // settings ロード中
-            content = (
-                <div style={{minHeight: '100px', 'textAlign': 'center'}}>
-                    <CircularProgress />
-                </div>
-            );
-        }
-        return (
-            <MuiThemeProvider theme={createMuiTheme(theme)}>
-                <Typography component="div" style={{ padding: 8 * 3 }}>
-                    <div className="panel-section-separator" />
-                    {content}
-                    <div className="panel-section-separator" />
-                </Typography>
             </MuiThemeProvider>
         );
     }

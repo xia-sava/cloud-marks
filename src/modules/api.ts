@@ -67,11 +67,11 @@ export class GDriveApi extends Api {
     protected baseUrl = 'https://www.googleapis.com/drive/v3';
     protected uploadUrl = 'https://www.googleapis.com/upload/drive/v3';
     protected authUrl = 'https://accounts.google.com/o/oauth2/auth';
-    protected clientID = '974355595437-vach47on7c5mpnkfrpmehlgvdnn9ih2e.apps.googleusercontent.com';
+    protected clientID: string;
 
     constructor(settings: Settings) {
         super(settings);
-        // this.baseUrl = 'https://www.googleapis.com/drive/v3';
+        this.clientID = settings.apiKey;
     }
 
     public async authenticate(): Promise<string> {

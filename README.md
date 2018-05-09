@@ -1,13 +1,19 @@
 # 概要
 
 Firefox のブックマークをクラウドストレージサービスに保存し複数端末間で共有出来るようなのを目指しています．
-
 XMarks がサービス終了したので作りました．
 
 クラウドとか銘打っていますが今のところ Google Drive のみ対応です．
 
-賢いマージ機能とか自動的に勝手に同期とかはまだ実装してません．
+自動的に同期とかはまだ実装してません．
 
+# 使用の前に
+
+使用前に必ずブックマークをバックアップしてください．
+
+**Google API Console で Google Drive 用の API Key を作る必要があります．**
+
+いちおうテスト用のキーを入れてありますが，たぶん接続時に警告が出ます．
 
 # 注意点
 
@@ -18,6 +24,7 @@ WebExtension API から充分に取り扱えないため，
 出力時には全ての区切り線は存在しなかった扱いになります．悪しからず．
 
 
-# アイコンの元
+# アイコンの出典
+
 <div>Icons made by <a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a> is licensed by <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a></div>
 <div>Icons made by <a href="http://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a> is licensed by <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a></div>
