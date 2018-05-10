@@ -154,14 +154,13 @@ export class Marks {
 
     private async applyRemote(remote: MarkTreeNode, bookmark: BookmarkTreeNode): Promise<boolean> {
         if (this.diffMark(remote, bookmark)) {
-            const parentId = bookmark.parentId;
-            const index = bookmark.index;
-            if (parentId) {
-                if (remote.children.length) {
-                    await this.removeBookmark(bookmark);
-                    await this.createBookmark(parentId, remote, index)
-                } else {
-                    await this.updateBookmark(bookmark, remote);
+            await this.updateBookmark(bookmark, remote);
+            if (remote.type === MarkType.folder) {
+                for (const child of bookmark.children || []) {
+                    await this.removeBookmark(child);
+                }
+                for (const child of remote.children) {
+                    await this.createBookmark(bookmark, child);
                 }
             }
             return true;
@@ -203,36 +202,57 @@ export class Marks {
     //     console.log('更新', target, modify);
     // }
 
-    private async createBookmark(parentId: string, mark: MarkTreeNode,
+    private async createBookmark(parent: BookmarkTreeNode, mark: MarkTreeNode,
                                  index: number | undefined = undefined) {
-        const added = await browser.bookmarks.create({
-            parentId: parentId,
-            index: index,
-            title: mark.title,
-            url: (mark.type === MarkType.bookmark)? mark.url: undefined,
-        });
-        if (! added) {
-            throw new ApplicationError('ブックマークの作成でエラーが発生しました');
+        let added: BookmarkTreeNode | undefined;
+        if (parent.id !== 'root________') {
+            added = await browser.bookmarks.create({
+                parentId: parent.id,
+                index: index,
+                title: mark.title,
+                url: (mark.type === MarkType.bookmark) ? mark.url : undefined,
+            });
+            if (!added) {
+                throw new ApplicationError('ブックマークの作成でエラーが発生しました');
+            }
+        } else {
+            for (const child of parent.children || []) {
+                if (mark.title === child.title) {
+                    added = child;
+                    break;
+                }
+            }
+            if (!added) {
+                throw new ApplicationError('ブックマークの作成でエラーが発生しました');
+            }
         }
         for (const child of mark.children) {
-            await this.createBookmark(added.id, child);
+            await this.createBookmark(added, child);
         }
         return added;
     };
 
     private async removeBookmark(target: BookmarkTreeNode) {
-        if (target.type === 'folder') {
-            await browser.bookmarks.removeTree(target.id);
+        if (target.id !== 'root________' && target.parentId !== 'root________') {
+            if (target.type === 'folder') {
+                await browser.bookmarks.removeTree(target.id);
+            } else {
+                await browser.bookmarks.remove(target.id);
+            }
         } else {
-            await browser.bookmarks.remove(target.id);
+            for (const child of target.children || []) {
+                await this.removeBookmark(child);
+            }
         }
     }
 
     private async updateBookmark(target: BookmarkTreeNode, modify: MarkTreeNode) {
-        return await browser.bookmarks.update(target.id, {
-            title: modify.title,
-            url: modify.url,
-        })
+        if (target.id !== 'root________' && target.parentId !== 'root________') {
+            return await browser.bookmarks.update(target.id, {
+                title: modify.title,
+                url: modify.url,
+            });
+        }
     }
 
     private findMarkArray(item: MarkTreeNode, array: MarkTreeNode[]): {found: boolean, similar: boolean, index: number} {
