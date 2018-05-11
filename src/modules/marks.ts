@@ -153,6 +153,7 @@ export class Marks {
     }
 
     private async applyRemote(remote: MarkTreeNode, bookmark: BookmarkTreeNode): Promise<boolean> {
+        console.log('apply', bookmark.title);
         if (this.diffMark(remote, bookmark)) {
             await this.updateBookmark(bookmark, remote);
             if (remote.type === MarkType.folder) {
@@ -165,10 +166,11 @@ export class Marks {
             }
             return true;
         }
-        if (bookmark.children) {
+        if (remote.type === MarkType.folder && bookmark.children) {
             let rc = false;
             for (const i in bookmark.children) {
-                rc = rc || await this.applyRemote(remote.children[i], bookmark.children[i]);
+                console.log(remote.children[i], bookmark.children[i]);
+                rc = await this.applyRemote(remote.children[i], bookmark.children[i]) || rc;
             }
             return rc;
         }
@@ -204,6 +206,7 @@ export class Marks {
 
     private async createBookmark(parent: BookmarkTreeNode, mark: MarkTreeNode,
                                  index: number | undefined = undefined) {
+        console.log('create', parent, mark);
         let added: BookmarkTreeNode | undefined;
         if (parent.id !== 'root________') {
             added = await browser.bookmarks.create({
@@ -233,6 +236,7 @@ export class Marks {
     };
 
     private async removeBookmark(target: BookmarkTreeNode) {
+        console.log('remove', target);
         if (target.id !== 'root________' && target.parentId !== 'root________') {
             if (target.type === 'folder') {
                 await browser.bookmarks.removeTree(target.id);
@@ -247,11 +251,12 @@ export class Marks {
     }
 
     private async updateBookmark(target: BookmarkTreeNode, modify: MarkTreeNode) {
+        console.log('update', target, modify);
         if (target.id !== 'root________' && target.parentId !== 'root________') {
-            return await browser.bookmarks.update(target.id, {
-                title: modify.title,
-                url: modify.url,
-            });
+            if (modify.url) {
+                browser.bookmarks.update(target.id, {url: modify.url}).then();
+            }
+            return await browser.bookmarks.update(target.id, {title: modify.title});
         }
     }
 
