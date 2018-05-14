@@ -42,7 +42,7 @@ export class Settings {
     public folderName: string = 'cloud_marks';
     public autoSyncOnBoot: boolean = false;
     public autoSync: boolean = false;
-    public autoSyncInterval: number = 3600;
+    public autoSyncInterval: number = 60;
 
     public lastSynced: number = 0;
     public lastBookmarkModify: number = 0;

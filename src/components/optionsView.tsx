@@ -37,7 +37,7 @@ export class OptionsView extends Component<Props, States> {
             folderName: 'cloud_marks',
             autoSyncOnBoot: false,
             autoSync: false,
-            autoSyncInterval: 3600,
+            autoSyncInterval: 60,
             apiKey: '',
             authenticated: false,
             helpApiKeyOpened: false,
