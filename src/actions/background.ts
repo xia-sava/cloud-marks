@@ -15,20 +15,9 @@ browser.runtime.onMessage.addListener(
 );
 
 browser.alarms.onAlarm.addListener(() => {
-    console.log('自動同期', Date.now());
-    (new Marks()).sync().then();
+    console.log('自動同期', new Date());
+    Main.sync({action: MessageType.sync}).then();
 });
-
-(async () => {
-    const settings = await Settings.load();
-    if (settings.autoSyncOnBoot) {
-        await (new Marks()).sync();
-    }
-
-    if (settings.autoSync) {
-        await setAutoSync(settings.autoSyncInterval);
-    }
-})();
 
 async function setAutoSync(autoSyncInterval: number) {
     console.log(`${autoSyncInterval}分おきに同期します`);
@@ -45,3 +34,14 @@ async function setAutoSyncInterval(request: MessageRequest): Promise<MessageResp
         },
     };
 }
+
+Settings.load().then((settings) => {
+    if (settings.autoSyncOnBoot) {
+        console.log('起動時同期', new Date());
+        Main.sync({action: MessageType.sync}).then();
+    }
+
+    if (settings.autoSync) {
+        setAutoSync(settings.autoSyncInterval).then();
+    }
+});
