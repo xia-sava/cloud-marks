@@ -40,6 +40,9 @@ export class Settings {
 
     public serviceSettings: ServiceSetting[] = [];
     public folderName: string = 'cloud_marks';
+    public autoSyncOnBoot: boolean = false;
+    public autoSync: boolean = false;
+    public autoSyncInterval: number = 3600;
 
     public lastSynced: number = 0;
     public lastBookmarkModify: number = 0;
@@ -95,6 +98,7 @@ export class Settings {
     }
 
     public async save() {
+        console.log('save settings', this);
         await browser.storage.local.set({[localStorageKey]: this});
     }
 

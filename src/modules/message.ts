@@ -7,6 +7,7 @@ export enum MessageType {
     getStatus = 'getStatus',
     getTimes = 'getTimes',
     statusChanged = 'statusChanged',
+    setAutoSyncInterval = 'setAutoSyncInterval',
 }
 
 export interface MessageRequest {

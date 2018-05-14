@@ -2,10 +2,10 @@ import * as React from 'react';
 import {Component} from 'react';
 import {createMuiTheme, MuiThemeProvider} from 'material-ui/styles';
 import {CircularProgress, Dialog, DialogContent, DialogContentText, Divider} from 'material-ui';
-import {FormControlLabel, MenuList, MenuItem, Switch, TextField, Typography} from 'material-ui';
+import {FormControlLabel, MenuList, MenuItem, Select, Switch, TextField, Typography} from 'material-ui';
 import {HelpOutline as HelpIcon} from '@material-ui/icons';
 
-import {Services, Settings, Storage} from '../modules';
+import {Message, MessageType, Services, Settings, Storage} from '../modules';
 
 
 interface Props {
@@ -16,6 +16,9 @@ interface States {
 
     currentService: Services;
     folderName: string;
+    autoSyncOnBoot: boolean;
+    autoSync: boolean;
+    autoSyncInterval: number;
     apiKey: string;
     authenticated: boolean;
 
@@ -32,6 +35,9 @@ export class OptionsView extends Component<Props, States> {
             settingsPrepared: false,
             currentService: Services.gdrive,
             folderName: 'cloud_marks',
+            autoSyncOnBoot: false,
+            autoSync: false,
+            autoSyncInterval: 3600,
             apiKey: '',
             authenticated: false,
             helpApiKeyOpened: false,
@@ -42,6 +48,9 @@ export class OptionsView extends Component<Props, States> {
                 settingsPrepared: true,
                 currentService: settings.currentService,
                 folderName: settings.folderName,
+                autoSyncOnBoot: settings.autoSyncOnBoot,
+                autoSync: settings.autoSync,
+                autoSyncInterval: settings.autoSyncInterval,
                 apiKey: settings.apiKey,
                 authenticated: settings.authenticated,
             })
@@ -98,6 +107,31 @@ export class OptionsView extends Component<Props, States> {
         await this.settings.save();
     }
 
+    private async onChangeAutoSyncOnBoot(event: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
+        this.settings.autoSyncOnBoot = checked;
+        this.setState({
+            autoSyncOnBoot: this.settings.autoSyncOnBoot,
+        });
+        await this.settings.save();
+    }
+
+    private async onChangeAutoSync(event: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
+        this.settings.autoSync = checked;
+        this.setState({
+            autoSync: this.settings.autoSync,
+        });
+        await this.settings.save();
+    }
+
+    private async onChangeAutoSyncInterval(event: React.ChangeEvent<HTMLSelectElement>, child: React.ReactNode) {
+        this.settings.autoSyncInterval = parseInt(event.target.value);
+        this.setState({
+            autoSyncInterval: this.settings.autoSyncInterval,
+        });
+        Message.send(MessageType.setAutoSyncInterval, {autoSyncInterval: this.settings.autoSyncInterval}).then();
+        await this.settings.save();
+    }
+
     public render() {
         const theme = {
         };
@@ -122,6 +156,46 @@ export class OptionsView extends Component<Props, States> {
                                    onChange={this.onChangeFolderName.bind(this)}
                                    fullWidth={true}
                         />
+                        <Typography variant={'title'} style={{marginTop: 24}}>
+                            起動時に同期
+                        </Typography>
+                        <FormControlLabel
+                            control={
+                                <Switch checked={this.state.autoSyncOnBoot}
+                                        onChange={this.onChangeAutoSyncOnBoot.bind(this)}
+                                        color={'primary'}
+                                />
+                            }
+                            label={this.state.autoSyncOnBoot ? '起動時に同期する' : '手動で同期する'}
+                            disabled={this.state.authenticated === false}
+                        />
+                        <Typography variant={'title'} style={{marginTop: 24}}>
+                            自動的に同期
+                        </Typography>
+                        <FormControlLabel
+                            control={
+                                <Switch checked={this.state.autoSync}
+                                        onChange={this.onChangeAutoSync.bind(this)}
+                                        color={'primary'}
+                                />
+                            }
+                            label={this.state.autoSync ? '自動的に同期する' : '手動で同期する'}
+                            disabled={this.state.authenticated === false}
+                        />
+                        <Typography variant={'title'} style={{marginTop: 24}}>
+                            自動同期間隔
+                        </Typography>
+                        <Select value={this.state.autoSyncInterval}
+                                onChange={this.onChangeAutoSyncInterval.bind(this)}
+                                disabled={this.state.autoSync === false}
+                        >
+                            <MenuItem value={1}>1分</MenuItem>
+                            <MenuItem value={2}>2分</MenuItem>
+                            <MenuItem value={10}>10分</MenuItem>
+                            <MenuItem value={30}>30分</MenuItem>
+                            <MenuItem value={60}>1時間</MenuItem>
+                            <MenuItem value={120}>2時間</MenuItem>
+                        </Select>
                     </div>
                     <Divider style={{marginBottom: 24}}/>
                     <Typography variant={'headline'}>ストレージサービス設定</Typography>
@@ -161,18 +235,20 @@ export class OptionsView extends Component<Props, States> {
                                     </DialogContentText>
                                 </DialogContent>
                             </Dialog>
-                            <Divider style={{marginBottom: 24}} light={true} inset={true} />
 
-                            <Typography variant={'title'}>
+                            <Typography variant={'title'} style={{marginTop: 24}}>
                                 Google Drive サービスとの接続
                             </Typography>
-                            <FormControlLabel control={
-                                <Switch checked={this.state.authenticated}
-                                        onChange={this.onChangeCloudAuth.bind(this)}
-                                        color={'primary'}
-                                        disabled={this.state.apiKey === ''}
-                                />
-                            } label={this.state.authenticated ? '接続済み' : '未接続'} />
+                            <FormControlLabel
+                                control={
+                                    <Switch checked={this.state.authenticated}
+                                            onChange={this.onChangeCloudAuth.bind(this)}
+                                            color={'primary'}
+                                    />
+                                }
+                                disabled={this.state.apiKey === ''}
+                                label={this.state.authenticated ? '接続済み' : '未接続'}
+                            />
                         </div>
                     )}
                     <Divider/>
