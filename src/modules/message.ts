@@ -24,7 +24,12 @@ type handlerMethod = (request: MessageRequest, sender: Object) => Promise<Messag
 
 export class Message {
     static async send(action: MessageType, message?: any): Promise<MessageResponse> {
-        return await browser.runtime.sendMessage({action, message});
+        try {
+            return await browser.runtime.sendMessage({action, message});
+        } catch (e) {
+            console.log(action, message, e);
+            return {success: false};
+        }
     }
 
     static receive(handlers: {[key: string]: handlerMethod}): handlerMethod {
