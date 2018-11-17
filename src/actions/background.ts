@@ -1,5 +1,5 @@
-import {MessageType, Main, Message, Settings, Marks} from "../modules";
-import {MessageRequest, MessageResponse} from "../modules/message";
+import {MessageType, Main, Message, Settings} from "../modules";
+import {MessageRequest, MessageResponse} from "../modules";
 
 
 browser.runtime.onMessage.addListener(
