@@ -37,7 +37,7 @@ export abstract class Storage {
 
     public async writeContents(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
         const contentsWithHash = {
-            version: 1,
+            version: 2,
             hash: this.hashContents(contents),
             contents: contents,
         };
@@ -46,11 +46,20 @@ export abstract class Storage {
 
     public async readContents(fileInfo: FileInfo): Promise<any> {
         const json = await this.read(fileInfo);
-        if (!('version' in json && 'hash' in json && 'contents' in json)) {
+        if (!('version' in json && 'contents' in json)) {
             throw new InvalidJsonException('読込みデータの形式が不正です');
         }
-        if (json.hash !== this.hashContents(json.contents)) {
-            throw new InvalidJsonException('読込みデータの整合性エラーです');
+        switch (json.version as number) {
+            case 1:
+                if (!('hash' in json)) {
+                    throw new InvalidJsonException('読込みデータの形式が不正です');
+                }
+                if (json.hash !== this.hashContents(json.contents)) {
+                    throw new InvalidJsonException('読込みデータの整合性エラーです');
+                }
+                break;
+            default:
+                break;
         }
         return json.contents;
     }
