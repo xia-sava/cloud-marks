@@ -68,7 +68,7 @@ export class GDriveStorage extends Storage {
         this.api = new GDriveApi(this.settings);
     }
 
-    public async lsFile(filename: string, parent: FileInfo | string = 'root'): Promise<FileInfo> {
+    public async lsFile(filename: string, parent: FileInfo | string | null = null): Promise<FileInfo> {
         parent = await this.findDirectory(parent);
         const query = {
             q: [
@@ -86,7 +86,7 @@ export class GDriveStorage extends Storage {
         return new FileInfo(json.files[0].name, json.files[0]);
     }
 
-    public async lsDir(dirName: string, parent: FileInfo | string = 'root'): Promise<FileInfo[]> {
+    public async lsDir(dirName: string, parent: FileInfo | string | null = null): Promise<FileInfo[]> {
         const dirInfo = await this.lsFile(dirName, parent);
         if (! dirInfo.filename) {
             return [];
@@ -103,7 +103,7 @@ export class GDriveStorage extends Storage {
         return json.files.map((file: FileObject) => new FileInfo(file.name, file));
     }
 
-    public async mkdir(dirName: string, parent: FileInfo | string = 'root'): Promise<FileInfo> {
+    public async mkdir(dirName: string, parent: FileInfo | string | null = null): Promise<FileInfo> {
         parent = await this.findDirectory(parent);
         const body = {
             name: dirName,
@@ -117,7 +117,7 @@ export class GDriveStorage extends Storage {
         return new FileInfo(json.name, json);
     }
 
-    public async create(filename: string, parent: FileInfo | string = 'root', contents: any): Promise<FileInfo> {
+    public async create(filename: string, parent: FileInfo | string | null = null, contents: any): Promise<FileInfo> {
         parent = await this.findDirectory(parent);
         const body = {
             name: filename,
@@ -154,18 +154,20 @@ export class GDriveStorage extends Storage {
         return await this.api.authenticate();
     }
 
-    private async findDirectory(dirInfo: FileInfo | string) {
-        if (typeof dirInfo === 'string') {
-            if (dirInfo === 'root') {
-                dirInfo = new FileInfo('root', {id: 'root'});
-            } else {
-                const dirName = dirInfo;
-                dirInfo = await this.lsFile(dirInfo);
-                if (!dirInfo.filename) {
-                    throw new DirectoryNotFoundError(`ディレクトリ ${dirName} が見つかりません`);
-                }
-            }
+    private async findDirectory(dirInfo: FileInfo | string | null): Promise<FileInfo> {
+        if (dirInfo === null) {
+            return new FileInfo("root", {id: "root"})
         }
-        return dirInfo;
+        else if (typeof dirInfo === 'string') {
+            const dirName = dirInfo;
+            dirInfo = await this.lsFile(dirInfo);
+            if (!dirInfo.filename) {
+                throw new DirectoryNotFoundError(`ディレクトリ ${dirName} が見つかりません`);
+            }
+            return dirInfo;
+        }
+        else {
+            return dirInfo;
+        }
     }
 }
