@@ -1,4 +1,5 @@
 import * as qs from 'qs';
+// @ts-ignore
 import * as urljoin from 'url-join';
 
 import {Settings} from './settings';

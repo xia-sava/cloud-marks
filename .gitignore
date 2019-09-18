@@ -67,7 +67,6 @@ typings/
 
 
 .idea
-package-lock.json
 dist/js/*
 dist/manifest.json
 release/*

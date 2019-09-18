@@ -4,9 +4,9 @@ const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
 module.exports = {
     context: __dirname,
     entry: {
-        background: "./src/Actions/background.ts",
-        options: "./src/Actions/options.tsx",
-        popup: "./src/Actions/popup.tsx",
+        background: "./src/actions/background.ts",
+        options: "./src/actions/options.tsx",
+        popup: "./src/actions/popup.tsx",
     },
     output: {
         path: __dirname + "/dist/js",
@@ -34,13 +34,13 @@ module.exports = {
                     loader: 'babel-loader',
                     options: {
                         presets: [
-                            ["env", {
+                            ["@babel/preset-env", {
                                 targets: {
                                     browsers: ["firefox >= 57"],
                                 },
                             }],
-                            "stage-0",
-                            "react",
+                            // "stage-0",
+                            // "react",
                         ],
                     },
                 },
