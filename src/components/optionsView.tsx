@@ -1,11 +1,11 @@
 import * as React from 'react';
 import {Component} from 'react';
-import {createMuiTheme, MuiThemeProvider} from 'material-ui/styles';
-import {CircularProgress, Dialog, DialogContent, DialogContentText, Divider} from 'material-ui';
-import {FormControlLabel, MenuList, MenuItem, Select, Switch, TextField, Typography} from 'material-ui';
-import {HelpOutline as HelpIcon} from '@material-ui/icons';
 
 import {Message, MessageType, Services, Settings, Storage} from '../modules';
+import {createTheme, ThemeProvider } from '@mui/material/styles';
+import { CircularProgress, Dialog, DialogContent, DialogContentText, Divider,
+    FormControlLabel, MenuItem, MenuList, Select, SelectChangeEvent, Switch, TextField, Typography } from '@mui/material';
+import HelpIcon from '@mui/icons-material/HelpOutline';
 
 
 interface Props {
@@ -66,7 +66,7 @@ export class OptionsView extends Component<Props, States> {
     //     await this.settings.save();
     // }
 
-    private async onChangeCloudAuth(event: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
+    private async onChangeCloudAuth(_: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
         if (checked) {
             const storage = Storage.factory(this.settings);
             this.settings.authInfo = await storage.authenticate();
@@ -107,7 +107,7 @@ export class OptionsView extends Component<Props, States> {
         await this.settings.save();
     }
 
-    private async onChangeAutoSyncOnBoot(event: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
+    private async onChangeAutoSyncOnBoot(_: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
         this.settings.autoSyncOnBoot = checked;
         this.setState({
             autoSyncOnBoot: this.settings.autoSyncOnBoot,
@@ -115,7 +115,7 @@ export class OptionsView extends Component<Props, States> {
         await this.settings.save();
     }
 
-    private async onChangeAutoSync(event: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
+    private async onChangeAutoSync(_: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
         this.settings.autoSync = checked;
         this.setState({
             autoSync: this.settings.autoSync,
@@ -123,8 +123,8 @@ export class OptionsView extends Component<Props, States> {
         await this.settings.save();
     }
 
-    private async onChangeAutoSyncInterval(event: React.ChangeEvent<HTMLSelectElement>, child: React.ReactNode) {
-        this.settings.autoSyncInterval = parseInt(event.target.value);
+    private async onChangeAutoSyncInterval(event: SelectChangeEvent<number>) {
+        this.settings.autoSyncInterval = event.target.value as number;
         this.setState({
             autoSyncInterval: this.settings.autoSyncInterval,
         });
@@ -138,25 +138,25 @@ export class OptionsView extends Component<Props, States> {
         if (!this.state.settingsPrepared) {
             // settings ロード中
             return (
-                <MuiThemeProvider theme={createMuiTheme(theme)}>
+                <ThemeProvider theme={createTheme(theme)}>
                     <div style={{minHeight: '100px', 'textAlign': 'center'}}>
                         <CircularProgress />
                     </div>
-                </MuiThemeProvider>
+                </ThemeProvider>
             );
         }
         return (
-            <MuiThemeProvider theme={createMuiTheme(theme)}>
+            <ThemeProvider theme={createTheme(theme)}>
                 <div>
                     <Divider/>
-                    <Typography variant={'headline'}>Cloud Marks 設定</Typography>
+                    <Typography variant="h5">Cloud Marks 設定</Typography>
                     <div style={{ padding: 24 }}>
-                        <Typography variant={'title'}>サービス上のフォルダ名</Typography>
+                        <Typography variant="h6">サービス上のフォルダ名</Typography>
                         <TextField value={this.state.folderName}
                                    onChange={this.onChangeFolderName.bind(this)}
                                    fullWidth={true}
                         />
-                        <Typography variant={'title'} style={{marginTop: 24}}>
+                        <Typography variant="h6" style={{marginTop: 24}}>
                             起動時に同期
                         </Typography>
                         <FormControlLabel
@@ -167,9 +167,9 @@ export class OptionsView extends Component<Props, States> {
                                 />
                             }
                             label={this.state.autoSyncOnBoot ? '起動時に同期する' : '手動で同期する'}
-                            disabled={this.state.authenticated === false}
+                            disabled={!this.state.authenticated}
                         />
-                        <Typography variant={'title'} style={{marginTop: 24}}>
+                        <Typography variant="h6" style={{marginTop: 24}}>
                             自動的に同期
                         </Typography>
                         <FormControlLabel
@@ -180,14 +180,14 @@ export class OptionsView extends Component<Props, States> {
                                 />
                             }
                             label={this.state.autoSync ? '自動的に同期する' : '手動で同期する'}
-                            disabled={this.state.authenticated === false}
+                            disabled={!this.state.authenticated}
                         />
-                        <Typography variant={'title'} style={{marginTop: 24}}>
+                        <Typography variant="h6" style={{marginTop: 24}}>
                             自動同期間隔
                         </Typography>
                         <Select value={this.state.autoSyncInterval}
                                 onChange={this.onChangeAutoSyncInterval.bind(this)}
-                                disabled={this.state.autoSync === false}
+                                disabled={!this.state.autoSync}
                         >
                             <MenuItem value={1}>1分</MenuItem>
                             <MenuItem value={2}>2分</MenuItem>
@@ -198,7 +198,7 @@ export class OptionsView extends Component<Props, States> {
                         </Select>
                     </div>
                     <Divider style={{marginBottom: 24}}/>
-                    <Typography variant={'headline'}>ストレージサービス設定</Typography>
+                    <Typography variant="h5">ストレージサービス設定</Typography>
                     {/*
                     <Tabs value={this.state.currentService}
                           onChange={this.onSelectedServiceChanged.bind(this)}
@@ -209,7 +209,7 @@ export class OptionsView extends Component<Props, States> {
                     */}
                     {this.state.currentService === Services.gdrive && (
                         <div style={{ padding: 24 }}>
-                            <Typography variant={'title'}>
+                            <Typography variant="h6">
                                 Google Drive API キー
                                 <HelpIcon style={{fontSize: 16}}
                                           onClick={() => this.setState({helpApiKeyOpened: true})}/>
@@ -236,7 +236,7 @@ export class OptionsView extends Component<Props, States> {
                                 </DialogContent>
                             </Dialog>
 
-                            <Typography variant={'title'} style={{marginTop: 24}}>
+                            <Typography variant="h6" style={{marginTop: 24}}>
                                 Google Drive サービスとの接続
                             </Typography>
                             <FormControlLabel
@@ -253,7 +253,7 @@ export class OptionsView extends Component<Props, States> {
                     )}
                     <Divider/>
                 </div>
-            </MuiThemeProvider>
+            </ThemeProvider>
         );
     }
 }

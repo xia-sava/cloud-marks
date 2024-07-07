@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { Component } from 'react';
-import { CircularProgress, Divider, ListItemIcon, ListItemText, MenuList, MenuItem, Typography } from 'material-ui';
-import { createMuiTheme, MuiThemeProvider } from 'material-ui/styles';
-import {CloudCircle, CloudDownload, CloudUpload, Settings as SettingsIcon, Sync as SyncIcon} from '@material-ui/icons';
 
 import {MessageType, Message, MessageRequest, MessageResponse, Settings} from "../modules";
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import {CircularProgress, Divider, ListItemIcon, ListItemText, MenuItem, MenuList, Typography } from '@mui/material';
+import {CloudCircle, CloudDownload, CloudUpload, Settings as SettingsIcon, Sync as SyncIcon } from '@mui/icons-material';
 
 
 interface Props {
@@ -125,7 +125,7 @@ export class PopupView extends Component<Props, States> {
         }
 
         return (
-            <MuiThemeProvider theme={createMuiTheme(theme)}>
+            <ThemeProvider theme={createTheme(theme)}>
                 <div>
                     <MenuList>
                         <Divider />
@@ -168,7 +168,7 @@ export class PopupView extends Component<Props, States> {
                     {message && <Typography>{message}</Typography>}
                     {this.state.error && <Typography color={'error'}>{this.state.error}</Typography>}
                 </div>
-            </MuiThemeProvider>
+            </ThemeProvider>
         );
     }
 }
