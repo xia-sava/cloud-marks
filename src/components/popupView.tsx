@@ -30,6 +30,12 @@ const PopupView: React.FC = () => {
         })();
     }, []);
 
+    useEffect(() => {
+        if (!authenticated) {
+            setMessage('設定画面からクラウドサービスに接続してください');
+        }
+    }, [authenticated]);
+
     const statusChanged = async (request: MessageRequest): Promise<MessageResponse> => {
         setSaving(request.message.saving);
         setLoading(request.message.loading);
@@ -82,10 +88,6 @@ const PopupView: React.FC = () => {
     });
 
     const disableAction = !authenticated || loading || saving || merging || syncing;
-
-    if (!authenticated) {
-        setMessage('設定画面からクラウドサービスに接続してください');
-    }
 
     return (
         <ThemeProvider theme={theme}>

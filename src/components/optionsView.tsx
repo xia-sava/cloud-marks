@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {createTheme, ThemeProvider} from '@mui/material/styles';
 import {
     CircularProgress,
@@ -9,7 +9,6 @@ import {
     Divider,
     FormControlLabel,
     MenuItem,
-    MenuList,
     Select,
     SelectChangeEvent,
     Switch,
@@ -24,78 +23,93 @@ import {Message, MessageType, Services, Settings, Storage} from '../modules';
 
 const OptionsView: React.FC = () => {
     const [settingsPrepared, setSettingsPrepared] = useState(false);
-    const [currentService, setCurrentService] = useState(Services.GoogleDrive);
-    const [folderName, setFolderName] = useState('cloud_marks');
-    const [autoSyncOnBoot, setAutoSyncOnBoot] = useState(false);
-    const [autoSync, setAutoSync] = useState(false);
-    const [autoSyncInterval, setAutoSyncInterval] = useState(60);
-    const [apiKey, setApiKey] = useState('');
-    const [authenticated, setAuthenticated] = useState(false);
     const [helpGoogleDriveApiKeyOpened, setHelpGoogleDriveApiKeyOpened] = useState(false);
-
-    let settings = new Settings();
+    const [formData, setFormData] = useState({
+        folderName: 'cloud_marks',
+        currentService: Services.GoogleDrive,
+        autoSyncOnBoot: false,
+        autoSync: false,
+        autoSyncInterval: 60,
+        googleDriveApiKey: '',
+        googleDriveAuthenticated: false,
+        awsAccessKeyId: '',
+        awsSecretAccessKey: '',
+        awsRegion: '',
+        awsAuthenticated: false,
+    });
+    const settingsRef = useRef(new Settings());
 
     useEffect(() => {
         (async () => {
-            settings = await Settings.load();
-
-            setCurrentService(settings.currentService);
-            setFolderName(settings.folderName);
-            setAutoSyncOnBoot(settings.autoSyncOnBoot);
-            setAutoSync(settings.autoSync);
-            setAutoSyncInterval(settings.autoSyncInterval);
-            setApiKey(settings.apiKey);
-            setAuthenticated(settings.authenticated);
-
+            const settings = await settingsRef.current.load();
+            setFormData({
+                folderName: settings.folderName,
+                currentService: settings.currentService,
+                autoSyncOnBoot: settings.autoSyncOnBoot,
+                autoSync: settings.autoSync,
+                autoSyncInterval: settings.autoSyncInterval,
+                googleDriveApiKey: settings.googleDriveApiKey,
+                googleDriveAuthenticated: settings.googleDriveAuthenticated,
+                awsAccessKeyId: settings.awsS3AccessKeyId,
+                awsSecretAccessKey: settings.awsS3SecretAccessKey,
+                awsRegion: settings.awsS3Region,
+                awsAuthenticated: settings.awsS3Authenticated,
+            });
             setSettingsPrepared(true);
         })();
     }, []);
 
-    const onChangeCloudAuth = async (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+    const onChangeSettings = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const {name, value} = event.target;
+        const settings = settingsRef.current;
+        if (name in settings) {
+            (settings as any)[name] = value;
+            await settings.save()
+        }
+        setFormData((prevState) => ({
+            ...prevState,
+            [name]: value,
+        }));
+    };
+
+    const onChangeGoogleDriveConnection = async (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+        const settings = settingsRef.current;
         if (checked) {
             const storage = Storage.factory(settings);
-            settings.authInfo = await storage.authenticate();
-            setAuthenticated(settings.authenticated);
+            settings.googleDriveAuthInfo = await storage.authenticate();
         } else {
-            settings.authInfo = '';
-            setAuthenticated(settings.authenticated);
+            settings.googleDriveAuthInfo = '';
         }
         await settings.save();
+        setFormData((prevState) => ({
+            ...prevState,
+            googleDriveAuthenticated: settings.googleDriveAuthenticated,
+        }));
     };
-
-    const onChangeApiKey = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        settings.apiKey = event.target.value;
-        setApiKey(settings.apiKey);
+    
+    const onChangeAwsS3Connection = async (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+        const settings = settingsRef.current;
+        if (checked) {
+            const storage = Storage.factory(settings);
+            settings.awsS3AuthInfo = await storage.authenticate();
+        } else {
+            settings.awsS3AuthInfo = '';
+        }
         await settings.save();
-    };
-
-    const setDefaultApiKey = async () => {
-        settings.apiKey = settings.currentServiceSetting.defaultApiKey;
-        setApiKey(settings.apiKey);
-        await settings.save();
-    };
-
-    const onChangeFolderName = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        settings.folderName = event.target.value;
-        setFolderName(settings.folderName);
-        await settings.save();
-    };
-
-    const onChangeAutoSyncOnBoot = async (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
-        settings.autoSyncOnBoot = checked;
-        setAutoSyncOnBoot(settings.autoSyncOnBoot);
-        await settings.save();
-    };
-
-    const onChangeAutoSync = async (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
-        settings.autoSync = checked;
-        setAutoSync(settings.autoSync);
-        await settings.save();
-    };
+        setFormData((prevState) => ({
+            ...prevState,
+            awsAuthenticated: settings.awsS3Authenticated,
+        }));
+    }
 
     const onChangeAutoSyncInterval = async (event: SelectChangeEvent<number>) => {
-        settings.autoSyncInterval = event.target.value as number;
-        setAutoSyncInterval(settings.autoSyncInterval);
+        const settings = settingsRef.current;
+        const interval = event.target.value as number;
+        settings.autoSyncInterval = interval;
+        setFormData((prevState) => ({
+            ...prevState,
+            autoSyncInterval: interval,
+        }));
         await Message.send(MessageType.setAutoSyncInterval, {autoSyncInterval: settings.autoSyncInterval});
         await settings.save();
     };
@@ -120,31 +134,33 @@ const OptionsView: React.FC = () => {
                 <Typography variant="h5">Cloud Marks 設定</Typography>
                 <div style={{padding: 24}}>
                     <Typography variant="h6">サービス上のフォルダ名</Typography>
-                    <TextField value={folderName} onChange={onChangeFolderName} fullWidth/>
+                    <TextField name={"folderName"} value={formData.folderName} onChange={onChangeSettings} fullWidth/>
                     <Typography variant="h6" style={{marginTop: 24}}>
                         起動時に同期
                     </Typography>
                     <FormControlLabel
                         control={
-                            <Switch checked={autoSyncOnBoot} onChange={onChangeAutoSyncOnBoot} color={'primary'}/>
+                            <Switch name={"autoSyncOnBoot"} checked={formData.autoSyncOnBoot}
+                                    onChange={onChangeSettings} color={'primary'}/>
                         }
-                        label={autoSyncOnBoot ? '起動時に同期する' : '手動で同期する'}
-                        disabled={!authenticated}
+                        label={formData.autoSyncOnBoot ? '起動時に同期する' : '手動で同期する'}
+                        disabled={!formData.googleDriveAuthenticated && !formData.awsAuthenticated}
                     />
                     <Typography variant="h6" style={{marginTop: 24}}>
                         自動的に同期
                     </Typography>
                     <FormControlLabel
                         control={
-                            <Switch checked={autoSync} onChange={onChangeAutoSync} color={'primary'}/>
+                            <Switch checked={formData.autoSync} onChange={onChangeSettings} color={'primary'}/>
                         }
-                        label={autoSync ? '自動的に同期する' : '手動で同期する'}
-                        disabled={!authenticated}
+                        label={formData.autoSync ? '自動的に同期する' : '手動で同期する'}
+                        disabled={!formData.googleDriveAuthenticated && !formData.awsAuthenticated}
                     />
                     <Typography variant="h6" style={{marginTop: 24}}>
                         自動同期間隔
                     </Typography>
-                    <Select value={autoSyncInterval} onChange={onChangeAutoSyncInterval} disabled={!autoSync}>
+                    <Select name={"autoSyncInterval"} value={formData.autoSyncInterval}
+                            onChange={onChangeAutoSyncInterval} disabled={!formData.autoSync}>
                         <MenuItem value={1}>1分</MenuItem>
                         <MenuItem value={2}>2分</MenuItem>
                         <MenuItem value={10}>10分</MenuItem>
@@ -155,18 +171,50 @@ const OptionsView: React.FC = () => {
                 </div>
                 <Divider style={{marginBottom: 24}}/>
                 <Typography variant="h5">ストレージサービス設定</Typography>
-                <TabContext value={Services[settings.currentService]}>
+                <TabContext value={Services[settingsRef.current.currentService]}>
                     <TabList centered>
+                        <Tab label="AWS S3" value={Services[Services.AwsS3]}/>
                         <Tab label="Google Drive" value={Services[Services.GoogleDrive]}/>
                     </TabList>
+                    <TabPanel value={Services[Services.AwsS3]}>
+                        <div style={{padding: 24}}>
+                            <Typography variant="h6">
+                                AWS Access Key ID
+                            </Typography>
+                            <TextField name={"awsAccessKeyId"} value={formData.awsAccessKeyId}
+                                       onChange={onChangeSettings} fullWidth/>
+                            <Typography variant="h6">
+                                AWS Secret Access Key
+                            </Typography>
+                            <TextField name={"awsSecretAccessKey"} value={formData.awsSecretAccessKey}
+                                       onChange={onChangeSettings} fullWidth/>
+                            <Typography variant="h6">
+                                AWS Region
+                            </Typography>
+                            <TextField name={"awsRegion"} value={formData.awsRegion} onChange={onChangeSettings}
+                                       fullWidth/>
+                            <Typography variant="h6" style={{marginTop: 24}}>
+                                AWS S3 サービスとの接続
+                            </Typography>
+                            <FormControlLabel
+                                control={
+                                    <Switch checked={formData.awsAuthenticated} onChange={onChangeAwsS3Connection} color={'primary'}/>
+                                }
+                                disabled={!formData.awsAccessKeyId || !formData.awsSecretAccessKey || !formData.awsRegion}
+                                label={formData.awsAuthenticated ? '接続済み' : '未接続'}
+                            />
+                        </div>
+                    </TabPanel>
                     <TabPanel value={Services[Services.GoogleDrive]}>
                         <div style={{padding: 24}}>
                             <Typography variant="h6">
                                 Google Drive API キー
                                 <HelpIcon style={{fontSize: 16}} onClick={() => setHelpGoogleDriveApiKeyOpened(true)}/>
                             </Typography>
-                            <TextField value={apiKey} onChange={onChangeApiKey} fullWidth/>
-                            <Dialog open={helpGoogleDriveApiKeyOpened} onClick={() => setHelpGoogleDriveApiKeyOpened(false)}>
+                            <TextField name="googleDriveApiKey" value={formData.googleDriveApiKey}
+                                       onChange={onChangeSettings} fullWidth/>
+                            <Dialog open={helpGoogleDriveApiKeyOpened}
+                                    onClick={() => setHelpGoogleDriveApiKeyOpened(false)}>
                                 <DialogContent>
                                     <DialogContentText>
                                         <Typography>
@@ -176,11 +224,6 @@ const OptionsView: React.FC = () => {
                                             "https://www.googleapis.com/auth/drive"）を
                                             セットした API キーを取得してください．
                                         </Typography>
-                                        <MenuList>
-                                            <MenuItem onClick={setDefaultApiKey}>
-                                                とりあえずデフォルトのキーを使う（たぶん接続時に警告が出ます）
-                                            </MenuItem>
-                                        </MenuList>
                                     </DialogContentText>
                                 </DialogContent>
                             </Dialog>
@@ -190,10 +233,11 @@ const OptionsView: React.FC = () => {
                             </Typography>
                             <FormControlLabel
                                 control={
-                                    <Switch checked={authenticated} onChange={onChangeCloudAuth} color={'primary'}/>
+                                    <Switch checked={formData.googleDriveAuthenticated}
+                                            onChange={onChangeGoogleDriveConnection} color={'primary'}/>
                                 }
-                                disabled={apiKey === ''}
-                                label={authenticated ? '接続済み' : '未接続'}
+                                disabled={formData.googleDriveApiKey === ''}
+                                label={formData.googleDriveAuthenticated ? '接続済み' : '未接続'}
                             />
                         </div>
                     </TabPanel>

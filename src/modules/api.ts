@@ -71,7 +71,8 @@ export class GoogleDriveApi extends Api {
 
     constructor(settings: Settings) {
         super(settings);
-        this.clientID = settings.apiKey;
+        this.clientID = settings.googleDriveApiKey;
+        console.log("Api", this);
     }
 
     public async authenticate(): Promise<string> {
@@ -102,15 +103,15 @@ export class GoogleDriveApi extends Api {
         if (init.headers == undefined) {
             init.headers = {};
         }
-        (init.headers as { [key: string]: string })['Authorization'] = `Bearer ${this.settings.authInfo}`;
+        (init.headers as { [key: string]: string })['Authorization'] = `Bearer ${this.settings.googleDriveAuthInfo}`;
 
         let response = await super.fetch(url, init);
 
         // 401 エラーの時はトークンを取り直して一回だけリトライする
         if (response.status === 401) {
-            this.settings.authInfo = await this.authenticate();
+            this.settings.googleDriveAuthInfo = await this.authenticate();
             this.settings.save().then();
-            (init.headers as { [key: string]: string })['Authorization'] = `Bearer ${this.settings.authInfo}`;
+            (init.headers as { [key: string]: string })['Authorization'] = `Bearer ${this.settings.googleDriveAuthInfo}`;
             response = await super.fetch(url, init);
         }
         return response;

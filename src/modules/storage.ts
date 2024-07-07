@@ -26,6 +26,7 @@ export abstract class Storage {
     static factory(settings: Settings): Storage {
         return {
             [Services.GoogleDrive]: () => new GoogleDriveStorage(settings),
+            [Services.AwsS3]: () => new AwsS3DriveStorage(settings),
         }[settings.currentService]();
     }
 
@@ -184,5 +185,42 @@ export class GoogleDriveStorage extends Storage {
         } else {
             return dirInfo;
         }
+    }
+}
+
+export class AwsS3DriveStorage extends Storage {
+    protected api: GoogleDriveApi;
+
+    constructor(settings: Settings) {
+        super(settings);
+        this.api = new GoogleDriveApi(this.settings);
+    }
+
+    public async lsFile(filename: string, parent?: FileInfo | string): Promise<FileInfo> {
+        return new FileInfo('', {});
+    }
+
+    public async lsDir(filename: string, parent?: FileInfo | string): Promise<FileInfo[]> {
+        return [];
+    }
+
+    public async mkdir(dirName: string, parent?: FileInfo | string): Promise<FileInfo> {
+        return new FileInfo('', {});
+    }
+
+    public async create(filename: string, parent?: FileInfo | string, contents?: any): Promise<FileInfo> {
+        return new FileInfo('', {});
+    }
+
+    public async write(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
+        return new FileInfo('', {});
+    }
+
+    public async read(fileInfo: FileInfo): Promise<any> {
+        return {};
+    }
+
+    public async authenticate(): Promise<string> {
+        return '';
     }
 }
