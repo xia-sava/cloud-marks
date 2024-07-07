@@ -3,4 +3,4 @@ import * as ReactDOM from 'react-dom';
 
 import {PopupView} from '../components/popupView';
 
-ReactDOM.render(<PopupView />, document.querySelector('#main'));
+ReactDOM.render(<PopupView/>, document.querySelector('#main'));

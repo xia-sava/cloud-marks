@@ -1,5 +1,4 @@
-import {MessageType, Main, Message, Settings} from "../modules";
-import {MessageRequest, MessageResponse} from "../modules";
+import {Main, Message, MessageRequest, MessageResponse, MessageType, Settings} from "../modules";
 
 
 browser.runtime.onMessage.addListener(

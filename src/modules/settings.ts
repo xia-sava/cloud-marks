@@ -9,18 +9,21 @@ export abstract class ServiceSetting {
     public defaultApiKey = '';
 
     private _apiKey: string = '';
-    private _authInfo: string = '';
 
     get apiKey(): string {
         return this._apiKey;
     }
+
     set apiKey(value: string) {
         this._apiKey = value;
     }
 
+    private _authInfo: string = '';
+
     public get authInfo(): string {
         return this._authInfo;
     }
+
     public set authInfo(value: string) {
         this._authInfo = value;
     }
@@ -64,6 +67,7 @@ export class Settings {
     public get apiKey(): string {
         return this.currentServiceSetting.apiKey;
     }
+
     public set apiKey(value: string) {
         this.currentServiceSetting.apiKey = value;
     }
@@ -71,6 +75,7 @@ export class Settings {
     public get authInfo(): string {
         return this.currentServiceSetting.authInfo;
     }
+
     public set authInfo(value: string) {
         this.currentServiceSetting.authInfo = value;
     }
@@ -90,19 +95,18 @@ export class Settings {
                     }
                 }
             }
-        }
-        catch (e) {
+        } catch (e) {
             console.error(e);
         }
         return that;
     }
 
+    public static async clear() {
+        await browser.storage.local.remove(localStorageKey);
+    }
+
     public async save() {
         console.log('save settings', this);
         await browser.storage.local.set({[localStorageKey]: this});
-    }
-
-    public static async clear() {
-        await browser.storage.local.remove(localStorageKey);
     }
 }

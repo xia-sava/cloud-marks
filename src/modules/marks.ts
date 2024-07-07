@@ -15,18 +15,12 @@ enum MarkType {
  * ツリー構造は再帰して持つ．
  */
 class MarkTreeNode {
-    constructor (
+    constructor(
         public type: MarkType = MarkType.bookmark,
         public title: string = '',
         public url: string = '',
         public children: MarkTreeNode[] = [],
-    ) {}
-
-    /**
-     * これ使ってない．実質，デバッグ用途．
-     */
-    public toString() {
-        return `${this.type}\t${this.title}\t${this.url}`;
+    ) {
     }
 
     /**
@@ -35,6 +29,13 @@ class MarkTreeNode {
      */
     static fromJson(json: any): MarkTreeNode {
         return new MarkTreeNode(json.type, json.title, json.url, json.children.map(MarkTreeNode.fromJson));
+    }
+
+    /**
+     * これ使ってない．実質，デバッグ用途．
+     */
+    public toString() {
+        return `${this.type}\t${this.title}\t${this.url}`;
     }
 }
 
@@ -49,14 +50,76 @@ export class Marks {
     private remoteFileCreated?: number;
 
     /**
-     * 設定画面で指定されたリモートストレージを取得する．
+     * Marksとブックマーク（あるいは別のMarks）で差分があるかどうか判定する．
+     * というほど賢くはない．名前かURLか，フォルダの場合は子ノードの数が違えば，差分ありと見なす．
+     * @param remote
+     * @param bookmark
      */
-    private async getStorage(): Promise<Storage> {
-        if (! this.storage) {
-            const settings = await Settings.load();
-            this.storage = Storage.factory(settings);
+    private static diffMarks(remote: MarkTreeNode, bookmark: BookmarkTreeNode | MarkTreeNode): boolean {
+        if (remote.title !== bookmark.title) {
+            return true;
         }
-        return this.storage;
+        if (remote.url !== (bookmark.url || '')) {
+            return true;
+        }
+        // children の比較は個数まで，中身の比較は他ループに任せる
+        if (remote.type === MarkType.folder) {
+            if (!bookmark.children || (remote.children.length !== bookmark.children.length)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * arrayの中に，targetと同じかあるいは似たMarksがあるかどうかを探す．
+     * diffMarks()くらいの基準で同じMarksがあれば {found: true} ．
+     * タイトルとかURLとかがどちらか緩く一致する程度のMarksが {similar: true, index: 何個目か} ．
+     * @param target
+     * @param array
+     */
+    private static findMarksInMarksArray(target: MarkTreeNode, array: MarkTreeNode[]): {
+        found: boolean,
+        similar: boolean,
+        index: number
+    } {
+        for (let i = 0; i < array.length; ++i) {
+            const mark = array[i];
+            if (!Marks.diffMarks(mark, target)) {
+                // 完全一致アイテムあり
+                return {found: true, similar: false, index: i};
+            }
+        }
+        for (let i = 0; i < array.length; ++i) {
+            const mark = array[i];
+            if (mark.type !== target.type) {
+                continue;
+            }
+            if (mark.type === MarkType.bookmark) {
+                if (mark.title === target.title || mark.url === target.url) {
+                    // タイトルか URL どちらか一致するブックマークあり
+                    return {found: false, similar: true, index: i};
+                }
+            } else {
+                if (mark.title === target.title) {
+                    // タイトルが一致するフォルダあり
+                    return {found: false, similar: true, index: i};
+                }
+                if (mark.children.length === target.children.length) {
+                    let j = 0;
+                    for (j = 0; j < mark.children.length; ++j) {
+                        if (Marks.diffMarks(target.children[j], mark.children[j])) {
+                            break;
+                        }
+                    }
+                    if (j >= mark.children.length) {
+                        // タイトルは異なるが配下が全部一致するフォルダあり
+                        return {found: false, similar: true, index: i};
+                    }
+                }
+            }
+        }
+        return {found: false, similar: false, index: -1};
     }
 
     /**
@@ -79,7 +142,14 @@ export class Marks {
         // ローカルが更新されているので保存する必要がある
         const needToSave = Math.max(lastBookmarkModified, lastSynced) < localBookmarkModified;
 
-        console.log({remoteFileCreated, lastSynced, lastBookmarkModified, localBookmarkModified, needToLoad, needToSave});
+        console.log({
+            remoteFileCreated,
+            lastSynced,
+            lastBookmarkModified,
+            localBookmarkModified,
+            needToLoad,
+            needToSave
+        });
         if (needToLoad && needToSave) {
             // リモートとローカルが両方更新されているのでマージしてから保存する
             await this.merge();
@@ -171,9 +241,37 @@ export class Marks {
     }
 
     /**
+     * ローカルブックマークの最終更新日時を取得する．
+     * 全体の最終更新を取得する機能はWebExtensionsでは提供されていないので，
+     * ルートから再帰的に全項目の更新日時を全部取って比較する．乱暴．
+     */
+    public async getBookmarkLastModifiedTime(): Promise<number> {
+        const getLatestTime = (bookmark: BookmarkTreeNode): number => {
+            const latest: number[] = [];
+            latest.push(Math.max(bookmark.dateAdded || 0, bookmark.dateGroupModified || 0));
+            for (const child of bookmark.children || []) {
+                latest.push(getLatestTime(child));
+            }
+            return Math.max(...latest);
+        };
+        return getLatestTime(await this.getBookmarkRoot());
+    }
+
+    /**
+     * 設定画面で指定されたリモートストレージを取得する．
+     */
+    private async getStorage(): Promise<Storage> {
+        if (!this.storage) {
+            const settings = await Settings.load();
+            this.storage = Storage.factory(settings);
+        }
+        return this.storage;
+    }
+
+    /**
      * リモートJSONの一覧から最新っぽいファイル名を取得する．
      */
-    private async getLatestRemoteFile(): Promise<{remoteFile: FileInfo, remoteFileCreated: number}> {
+    private async getLatestRemoteFile(): Promise<{ remoteFile: FileInfo, remoteFileCreated: number }> {
         // ストレージのファイル一覧を取得して最新ファイルを取得
         if (!this.remoteFile || !this.remoteFileCreated) {
             const storage = await this.getStorage();
@@ -229,28 +327,6 @@ export class Marks {
                 rc = await this.applyMarksToBookmark(remote.children[i], bookmark.children[i]) || rc;
             }
             return rc;
-        }
-        return false;
-    }
-
-    /**
-     * Marksとブックマーク（あるいは別のMarks）で差分があるかどうか判定する．
-     * というほど賢くはない．名前かURLか，フォルダの場合は子ノードの数が違えば，差分ありと見なす．
-     * @param remote
-     * @param bookmark
-     */
-    private static diffMarks(remote: MarkTreeNode, bookmark: BookmarkTreeNode | MarkTreeNode): boolean {
-        if (remote.title !== bookmark.title) {
-            return true;
-        }
-        if (remote.url !== (bookmark.url || '')) {
-            return true;
-        }
-        // children の比較は個数まで，中身の比較は他ループに任せる
-        if (remote.type === MarkType.folder) {
-            if (! bookmark.children || (remote.children.length !== bookmark.children.length)) {
-                return true;
-            }
         }
         return false;
     }
@@ -312,53 +388,6 @@ export class Marks {
     }
 
     /**
-     * arrayの中に，targetと同じかあるいは似たMarksがあるかどうかを探す．
-     * diffMarks()くらいの基準で同じMarksがあれば {found: true} ．
-     * タイトルとかURLとかがどちらか緩く一致する程度のMarksが {similar: true, index: 何個目か} ．
-     * @param target
-     * @param array
-     */
-    private static findMarksInMarksArray(target: MarkTreeNode, array: MarkTreeNode[]): {found: boolean, similar: boolean, index: number} {
-        for (let i = 0; i < array.length; ++i) {
-            const mark = array[i];
-            if (!Marks.diffMarks(mark, target)) {
-                // 完全一致アイテムあり
-                return {found: true, similar: false, index: i};
-            }
-        }
-        for (let i = 0; i < array.length; ++i) {
-            const mark = array[i];
-            if (mark.type !== target.type) {
-                continue;
-            }
-            if (mark.type === MarkType.bookmark) {
-                if (mark.title === target.title || mark.url === target.url) {
-                    // タイトルか URL どちらか一致するブックマークあり
-                    return {found: false, similar: true, index: i};
-                }
-            } else {
-                if (mark.title === target.title) {
-                    // タイトルが一致するフォルダあり
-                    return {found: false, similar: true, index: i};
-                }
-                if (mark.children.length === target.children.length) {
-                    let j = 0;
-                    for (j = 0; j < mark.children.length; ++j) {
-                        if (Marks.diffMarks(target.children[j], mark.children[j])) {
-                            break;
-                        }
-                    }
-                    if (j >= mark.children.length) {
-                        // タイトルは異なるが配下が全部一致するフォルダあり
-                        return {found: false, similar: true, index: i};
-                    }
-                }
-            }
-        }
-        return {found: false, similar: false, index: -1};
-    }
-
-    /**
      * Marks同士をマージする．
      * leftにないMarksがrightにあれば，それをleftに追加する．
      * @param left
@@ -369,13 +398,11 @@ export class Marks {
             const {found, similar, index} = Marks.findMarksInMarksArray(item, left);
             if (found) {
                 left[index].children = this.mergeMarks(left[index].children, item.children);
-            }
-            else if (similar) {
+            } else if (similar) {
                 left[index].title = item.title;
                 left[index].url = item.url;
                 left[index].children = this.mergeMarks(left[index].children, item.children);
-            }
-            else {
+            } else {
                 left.push(item);
             }
         }
@@ -409,23 +436,6 @@ export class Marks {
         const mobile = await getTree('mobile______');
         root.children = [menu, toolbar, unfiled, mobile];
         return root;
-    }
-
-    /**
-     * ローカルブックマークの最終更新日時を取得する．
-     * 全体の最終更新を取得する機能はWebExtensionsでは提供されていないので，
-     * ルートから再帰的に全項目の更新日時を全部取って比較する．乱暴．
-     */
-    public async getBookmarkLastModifiedTime(): Promise<number> {
-        const getLatestTime = (bookmark: BookmarkTreeNode): number => {
-            const latest: number[] = [];
-            latest.push(Math.max(bookmark.dateAdded || 0, bookmark.dateGroupModified || 0));
-            for (const child of bookmark.children || []) {
-                latest.push(getLatestTime(child));
-            }
-            return Math.max(...latest);
-        };
-        return getLatestTime(await this.getBookmarkRoot());
     }
 
     /**

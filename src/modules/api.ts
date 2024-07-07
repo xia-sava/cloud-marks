@@ -19,7 +19,7 @@ export class Api {
         } else {
             url = urlJoin(this.baseUrl, api);
         }
-        const headers: {[key: string]: string} = init.headers as {} || {};
+        const headers: { [key: string]: string } = init.headers as {} || {};
         if (headers['Accept'] == undefined) {
             headers['Accept'] = 'application/json';
         }

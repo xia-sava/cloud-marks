@@ -1,4 +1,3 @@
-
 export class ApplicationError implements Error {
     public name = 'ApplicationError';
 

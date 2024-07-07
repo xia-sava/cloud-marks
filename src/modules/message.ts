@@ -1,4 +1,3 @@
-
 export enum MessageType {
     save = 'save',
     load = 'load',
@@ -32,7 +31,7 @@ export class Message {
         }
     }
 
-    static receive(handlers: {[key: string]: handlerMethod}): handlerMethod {
+    static receive(handlers: { [key: string]: handlerMethod }): handlerMethod {
         return (request: MessageRequest, sender: Object): Promise<MessageResponse> | boolean => {
             if (handlers[request.action] != undefined) {
                 return handlers[request.action](request, sender);

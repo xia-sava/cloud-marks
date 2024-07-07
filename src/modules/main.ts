@@ -1,4 +1,3 @@
-
 import {Marks} from "./marks";
 import {Message, MessageRequest, MessageResponse, MessageType} from "./message";
 import {Settings} from "./settings";
@@ -7,48 +6,55 @@ import {ApplicationError} from "./exceptions";
 
 export class Status {
     private _saving: boolean = false;
-    private _loading: boolean = false;
-    private _merging: boolean = false;
-    private _syncing: boolean = false;
-
-    private _message: string = '';
-    private _error: string = '';
 
     get saving(): boolean {
         return this._saving;
     }
+
     set saving(value: boolean) {
         this._saving = value;
         this.emitStatusChange().then();
     }
 
+    private _loading: boolean = false;
+
     get loading(): boolean {
         return this._loading;
     }
+
     set loading(value: boolean) {
         this._loading = value;
         this.emitStatusChange().then();
     }
 
+    private _merging: boolean = false;
+
     get merging(): boolean {
         return this._merging;
     }
+
     set merging(value: boolean) {
         this._merging = value;
         this.emitStatusChange().then();
     }
 
+    private _syncing: boolean = false;
+
     get syncing(): boolean {
         return this._syncing;
     }
+
     set syncing(value: boolean) {
         this._syncing = value;
         this.emitStatusChange().then();
     }
 
+    private _message: string = '';
+
     get message(): string {
         return this._message;
     }
+
     set message(value: string) {
         if (value) {
             const date = new Date();
@@ -58,9 +64,12 @@ export class Status {
         this.emitStatusChange().then();
     }
 
+    private _error: string = '';
+
     get error(): string {
         return this._error;
     }
+
     set error(value: string) {
         if (value) {
             const date = new Date();
@@ -135,8 +144,7 @@ export class Main {
                     break;
             }
             Main.status.message = message;
-        }
-        catch (e: any) {
+        } catch (e: any) {
             console.log(e, e.stack);
             if (e instanceof ApplicationError) {
                 Main.status.error = e.message;

@@ -1,4 +1,4 @@
-import { sha256 } from 'js-sha256';
+import {sha256} from 'js-sha256';
 
 import {Api, GDriveApi} from './api';
 import {Services} from "./enums";
@@ -11,7 +11,8 @@ export class FileInfo {
     constructor(
         public filename: string,
         public fileObject: FileObject
-    ) {}
+    ) {
+    }
 }
 
 export abstract class Storage {
@@ -27,12 +28,19 @@ export abstract class Storage {
             [Services.gdrive]: () => new GDriveStorage(settings),
         }[settings.currentService]();
     }
+
     public abstract lsFile(filename: string, parent?: FileInfo | string): Promise<FileInfo>;
+
     public abstract lsDir(filename: string, parent?: FileInfo | string): Promise<FileInfo[]>;
+
     public abstract mkdir(dirName: string, parent?: FileInfo | string): Promise<FileInfo>;
+
     public abstract create(filename: string, parent?: FileInfo | string, contents?: any): Promise<FileInfo>;
+
     public abstract write(fileInfo: FileInfo, contents: any): Promise<FileInfo>;
+
     public abstract read(fileInfo: FileInfo): Promise<any>;
+
     public abstract authenticate(): Promise<string>;
 
     public async writeContents(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
@@ -97,7 +105,7 @@ export class GDriveStorage extends Storage {
 
     public async lsDir(dirName: string, parent: FileInfo | string | null = null): Promise<FileInfo[]> {
         const dirInfo = await this.lsFile(dirName, parent);
-        if (! dirInfo.filename) {
+        if (!dirInfo.filename) {
             return [];
         }
         const query = {
@@ -166,16 +174,14 @@ export class GDriveStorage extends Storage {
     private async findDirectory(dirInfo: FileInfo | string | null): Promise<FileInfo> {
         if (dirInfo === null) {
             return new FileInfo("root", {id: "root"})
-        }
-        else if (typeof dirInfo === 'string') {
+        } else if (typeof dirInfo === 'string') {
             const dirName = dirInfo;
             dirInfo = await this.lsFile(dirInfo);
             if (!dirInfo.filename) {
                 throw new DirectoryNotFoundError(`ディレクトリ ${dirName} が見つかりません`);
             }
             return dirInfo;
-        }
-        else {
+        } else {
             return dirInfo;
         }
     }
