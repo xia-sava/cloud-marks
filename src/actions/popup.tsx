@@ -1,6 +1,9 @@
+import {createRoot} from 'react-dom/client';
+import PopupView from "../components/popupView";
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
 
-import {PopupView} from '../components/popupView';
+const rootElement = document.querySelector('#main');
 
-ReactDOM.render(<PopupView/>, document.querySelector('#main'));
+if (rootElement) {
+    createRoot(rootElement).render(<PopupView/>);
+}

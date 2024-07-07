@@ -1,173 +1,141 @@
 import * as React from 'react';
-import {Component} from 'react';
-
-import {Message, MessageRequest, MessageResponse, MessageType, Settings} from "../modules";
+import {useEffect, useState} from 'react';
 import {createTheme, ThemeProvider} from '@mui/material/styles';
 import {CircularProgress, Divider, ListItemIcon, ListItemText, MenuItem, MenuList, Typography} from '@mui/material';
 import {CloudCircle, CloudDownload, CloudUpload, Settings as SettingsIcon, Sync as SyncIcon} from '@mui/icons-material';
 
+import {Message, MessageRequest, MessageResponse, MessageType, Settings} from "../modules";
 
-interface Props {
-}
+const PopupView: React.FC = () => {
+    const [authenticated, setAuthenticated] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [merging, setMerging] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
 
-interface States {
-    authenticated: boolean;
+    useEffect(() => {
+        (async () => {
+            const settings = await Settings.load();
+            setAuthenticated(settings.authenticated);
 
-    saving: boolean;
-    loading: boolean;
-    merging: boolean;
-    syncing: boolean;
-    message: string;
-    error: string;
+            browser.runtime.onMessage.addListener(
+                Message.receive({
+                    [MessageType.statusChanged]: statusChanged,
+                })
+            );
 
-    lastSave: number;
-    lastLoad: number;
-    lastModified: number;
-}
+            await getBackgroundStatus();
+        })();
+    }, []);
 
-export class PopupView extends Component<Props, States> {
-    constructor(props: Props) {
-        super(props);
-        this.state = {
-            authenticated: false,
-            saving: false,
-            loading: false,
-            merging: false,
-            syncing: false,
-            message: '',
-            error: '',
-            lastSave: 0,
-            lastLoad: 0,
-            lastModified: 0,
-        };
-    }
+    const statusChanged = async (request: MessageRequest): Promise<MessageResponse> => {
+        setSaving(request.message.saving);
+        setLoading(request.message.loading);
+        setMerging(request.message.merging);
+        setSyncing(request.message.syncing);
+        setMessage(request.message.message);
+        setError(request.message.error);
 
-    static async openOptionsPage() {
-        await browser.runtime.openOptionsPage();
-        window.close();
-    }
+        return {success: true};
+    };
 
-    async componentWillMount() {
-        const settings = await Settings.load();
-        this.setState({authenticated: settings.authenticated});
-        browser.runtime.onMessage.addListener(
-            Message.receive({
-                [MessageType.statusChanged]: this.statusChanged.bind(this),
-            })
-        );
-        await this.getBackgroundStatus();
-    }
-
-    render(): JSX.Element {
-        const theme = {
-            typography: {
-                fontSize: 10,
-            }
-        };
-        let message = this.state.message;
-        const disableAction = (
-            !this.state.authenticated ||
-            this.state.loading ||
-            this.state.saving ||
-            this.state.merging ||
-            this.state.syncing
-        );
-        if (!this.state.authenticated) {
-            message = '設定画面からクラウドサービスに接続してください';
-        }
-
-        return (
-            <ThemeProvider theme={createTheme(theme)}>
-                <div>
-                    <MenuList>
-                        <Divider/>
-                        <MenuItem onClick={this.syncAction.bind(this)} disabled={disableAction}>
-                            <ListItemIcon>
-                                {this.state.syncing ? <CircularProgress size={24}/> : <SyncIcon/>}
-                            </ListItemIcon>
-                            <ListItemText primary="クラウドと同期"/>
-                        </MenuItem>
-                        <Divider/>
-                        <MenuItem onClick={this.saveAction.bind(this)} disabled={disableAction}>
-                            <ListItemIcon>
-                                {this.state.saving ? <CircularProgress size={24}/> : <CloudUpload/>}
-                            </ListItemIcon>
-                            <ListItemText primary="クラウドに保存"/>
-                        </MenuItem>
-                        <Divider/>
-                        <MenuItem onClick={this.loadAction.bind(this)} disabled={disableAction}>
-                            <ListItemIcon>
-                                {this.state.loading ? <CircularProgress size={24}/> : <CloudDownload/>}
-                            </ListItemIcon>
-                            <ListItemText primary="クラウドから読込み"/>
-                        </MenuItem>
-                        <Divider/>
-                        <MenuItem onClick={this.mergeAction.bind(this)} disabled={disableAction}>
-                            <ListItemIcon>
-                                {this.state.merging ? <CircularProgress size={24}/> : <CloudCircle/>}
-                            </ListItemIcon>
-                            <ListItemText primary="クラウドからマージ"/>
-                        </MenuItem>
-                        <Divider/>
-                        <MenuItem onClick={PopupView.openOptionsPage}>
-                            <ListItemIcon>
-                                <SettingsIcon/>
-                            </ListItemIcon>
-                            <ListItemText primary="設定"/>
-                        </MenuItem>
-                        <Divider/>
-                    </MenuList>
-                    {message && <Typography>{message}</Typography>}
-                    {this.state.error && <Typography color={'error'}>{this.state.error}</Typography>}
-                </div>
-            </ThemeProvider>
-        );
-    }
-
-    private async statusChanged(request: MessageRequest): Promise<MessageResponse> {
-        console.log(request.message);
-        this.setState({
-            saving: request.message.saving,
-            loading: request.message.loading,
-            merging: request.message.merging,
-            syncing: request.message.syncing,
-            message: request.message.message,
-            error: request.message.error,
-        });
-        return {
-            success: true,
-        };
-    }
-
-    private async getBackgroundStatus() {
+    const getBackgroundStatus = async () => {
         const response = await Message.send(MessageType.getStatus);
-        this.setState({
-            saving: response.message.saving,
-            loading: response.message.loading,
-            merging: response.message.merging,
-            syncing: response.message.syncing,
-            message: response.message.message,
-            error: response.message.error,
-        })
-    }
+        setSaving(response.message.saving);
+        setLoading(response.message.loading);
+        setMerging(response.message.merging);
+        setSyncing(response.message.syncing);
+        setMessage(response.message.message);
+        setError(response.message.error);
+    };
 
-    private async syncAction() {
-        this.setState({syncing: true});
+    const syncAction = async () => {
+        setSyncing(true);
         await Message.send(MessageType.sync);
-    }
+        setSyncing(false);
+    };
 
-    private async saveAction() {
-        this.setState({saving: true});
+    const saveAction = async () => {
+        setSaving(true);
         await Message.send(MessageType.save);
-    }
+        setSaving(false);
+    };
 
-    private async loadAction() {
-        this.setState({loading: true});
+    const loadAction = async () => {
+        setLoading(true);
         await Message.send(MessageType.load);
+        setLoading(false);
+    };
+
+    const mergeAction = async () => {
+        setMerging(true);
+        await Message.send(MessageType.merge);
+        setMerging(false);
+    };
+
+    const theme = createTheme({
+        typography: {
+            fontSize: 10,
+        }
+    });
+
+    const disableAction = !authenticated || loading || saving || merging || syncing;
+
+    if (!authenticated) {
+        setMessage('設定画面からクラウドサービスに接続してください');
     }
 
-    private async mergeAction() {
-        this.setState({merging: true});
-        await Message.send(MessageType.merge);
-    }
-}
+    return (
+        <ThemeProvider theme={theme}>
+            <div>
+                <MenuList>
+                    <Divider/>
+                    <MenuItem onClick={syncAction} disabled={disableAction}>
+                        <ListItemIcon>
+                            {syncing ? <CircularProgress size={24}/> : <SyncIcon/>}
+                        </ListItemIcon>
+                        <ListItemText primary="クラウドと同期"/>
+                    </MenuItem>
+                    <Divider/>
+                    <MenuItem onClick={saveAction} disabled={disableAction}>
+                        <ListItemIcon>
+                            {saving ? <CircularProgress size={24}/> : <CloudUpload/>}
+                        </ListItemIcon>
+                        <ListItemText primary="クラウドに保存"/>
+                    </MenuItem>
+                    <Divider/>
+                    <MenuItem onClick={loadAction} disabled={disableAction}>
+                        <ListItemIcon>
+                            {loading ? <CircularProgress size={24}/> : <CloudDownload/>}
+                        </ListItemIcon>
+                        <ListItemText primary="クラウドから読込み"/>
+                    </MenuItem>
+                    <Divider/>
+                    <MenuItem onClick={mergeAction} disabled={disableAction}>
+                        <ListItemIcon>
+                            {merging ? <CircularProgress size={24}/> : <CloudCircle/>}
+                        </ListItemIcon>
+                        <ListItemText primary="クラウドからマージ"/>
+                    </MenuItem>
+                    <Divider/>
+                    <MenuItem onClick={async () => {
+                        await browser.runtime.openOptionsPage();
+                        window.close();
+                    }}>
+                        <ListItemIcon>
+                            <SettingsIcon/>
+                        </ListItemIcon>
+                        <ListItemText primary="設定"/>
+                    </MenuItem>
+                    <Divider/>
+                </MenuList>
+                {message && <Typography>{message}</Typography>}
+                {error && <Typography color={'error'}>{error}</Typography>}
+            </div>
+        </ThemeProvider>
+    );
+};
+
+export default PopupView;

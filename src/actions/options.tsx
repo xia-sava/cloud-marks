@@ -1,6 +1,9 @@
+import {createRoot} from 'react-dom/client';
+import OptionsView from "../components/optionsView";
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
 
-import {OptionsView} from "../components/optionsView";
+const rootElement = document.querySelector('#main');
 
-ReactDOM.render(<OptionsView/>, document.querySelector('#main'));
+if (rootElement) {
+    createRoot(rootElement).render(<OptionsView/>);
+}
