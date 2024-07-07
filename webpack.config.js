@@ -1,4 +1,4 @@
-const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
+const TerserPlugin = require("terser-webpack-plugin");
 
 
 module.exports = {
@@ -10,7 +10,6 @@ module.exports = {
     },
     output: {
         path: __dirname + "/dist/js",
-        filename: "[name].js",
     },
     node: {
         global: true,
@@ -50,10 +49,10 @@ module.exports = {
     plugins: [],
     optimization: {
         minimizer: [
-            new UglifyJSPlugin({
-                uglifyOptions: {
+            new TerserPlugin({
+                terserOptions: {
                     compress: {
-                        drop_console: true
+                        drop_console: true,
                     }
                 }
             })

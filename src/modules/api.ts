@@ -1,8 +1,7 @@
 import * as qs from 'qs';
-// @ts-ignore
-import * as urljoin from 'url-join';
 
 import {Settings} from './settings';
+import urlJoin from 'url-join';
 
 
 export class Api {
@@ -18,7 +17,7 @@ export class Api {
         if (api.match(/^https?:\/\//)) {
             url = api;
         } else {
-            url = urljoin(this.baseUrl, api);
+            url = urlJoin(this.baseUrl, api);
         }
         const headers: {[key: string]: string} = init.headers as {} || {};
         if (headers['Accept'] == undefined) {
@@ -96,7 +95,7 @@ export class GDriveApi extends Api {
     public async fetch(url: string, init: RequestInit): Promise<Response> {
         // upload の時だけ baseUrl が変わる変態設計
         if (url.startsWith(`upload/`)) {
-            url = urljoin(this.uploadUrl, url.replace(`upload/`, ''));
+            url = urlJoin(this.uploadUrl, url.replace(`upload/`, ''));
         }
 
         // ヘッダに Authorization を仕込む
