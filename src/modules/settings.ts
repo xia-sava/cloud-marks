@@ -11,7 +11,7 @@ export class Settings {
 
     public awsS3AccessKeyId: string = '';
     public awsS3SecretAccessKey: string = '';
-    public awsS3Region: string = '';
+    public awsS3Region: string = 'ap-northeast-1';
     public awsS3AuthInfo: string = '';
 
     public googleDriveApiKey: string = '';

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {useEffect, useRef, useState} from 'react';
+import {SyntheticEvent, useEffect, useRef, useState} from 'react';
 import {createTheme, ThemeProvider} from '@mui/material/styles';
 import {
     CircularProgress,
@@ -24,18 +24,19 @@ import {Message, MessageType, Services, Settings, Storage} from '../modules';
 const OptionsView: React.FC = () => {
     const [settingsPrepared, setSettingsPrepared] = useState(false);
     const [helpGoogleDriveApiKeyOpened, setHelpGoogleDriveApiKeyOpened] = useState(false);
+    const settingTmpl = new Settings();
     const [formData, setFormData] = useState({
-        folderName: 'cloud_marks',
-        currentService: Services.GoogleDrive,
-        autoSyncOnBoot: false,
-        autoSync: false,
-        autoSyncInterval: 60,
-        googleDriveApiKey: '',
-        googleDriveAuthenticated: false,
-        awsAccessKeyId: '',
-        awsSecretAccessKey: '',
-        awsRegion: '',
-        awsAuthenticated: false,
+        folderName: settingTmpl.folderName,
+        currentService: settingTmpl.currentService,
+        autoSyncOnBoot: settingTmpl.autoSyncOnBoot,
+        autoSync: settingTmpl.autoSync,
+        autoSyncInterval: settingTmpl.autoSyncInterval,
+        googleDriveApiKey: settingTmpl.googleDriveApiKey,
+        googleDriveAuthenticated: settingTmpl.googleDriveAuthenticated,
+        awsS3AccessKeyId: settingTmpl.awsS3AccessKeyId,
+        awsS3SecretAccessKey: settingTmpl.awsS3SecretAccessKey,
+        awsS3Region: settingTmpl.awsS3Region,
+        awsS3Authenticated: settingTmpl.awsS3Authenticated,
     });
     const settingsRef = useRef(new Settings());
 
@@ -50,10 +51,10 @@ const OptionsView: React.FC = () => {
                 autoSyncInterval: settings.autoSyncInterval,
                 googleDriveApiKey: settings.googleDriveApiKey,
                 googleDriveAuthenticated: settings.googleDriveAuthenticated,
-                awsAccessKeyId: settings.awsS3AccessKeyId,
-                awsSecretAccessKey: settings.awsS3SecretAccessKey,
-                awsRegion: settings.awsS3Region,
-                awsAuthenticated: settings.awsS3Authenticated,
+                awsS3AccessKeyId: settings.awsS3AccessKeyId,
+                awsS3SecretAccessKey: settings.awsS3SecretAccessKey,
+                awsS3Region: settings.awsS3Region,
+                awsS3Authenticated: settings.awsS3Authenticated,
             });
             setSettingsPrepared(true);
         })();
@@ -98,7 +99,7 @@ const OptionsView: React.FC = () => {
         await settings.save();
         setFormData((prevState) => ({
             ...prevState,
-            awsAuthenticated: settings.awsS3Authenticated,
+            awsS3Authenticated: settings.awsS3Authenticated,
         }));
     }
 
@@ -113,6 +114,16 @@ const OptionsView: React.FC = () => {
         await Message.send(MessageType.setAutoSyncInterval, {autoSyncInterval: settings.autoSyncInterval});
         await settings.save();
     };
+
+    const onChangeCurrentService = async (event: SyntheticEvent<Element, Event>, value: any) => {
+        const settings = settingsRef.current;
+        settings.currentService = Services[value as keyof typeof Services] as Services;
+        await settings.save()
+        setFormData((prevState) => ({
+            ...prevState,
+            currentService: settings.currentService,
+        }));
+    }
 
     const theme = createTheme({});
 
@@ -144,7 +155,7 @@ const OptionsView: React.FC = () => {
                                     onChange={onChangeSettings} color={'primary'}/>
                         }
                         label={formData.autoSyncOnBoot ? '起動時に同期する' : '手動で同期する'}
-                        disabled={!formData.googleDriveAuthenticated && !formData.awsAuthenticated}
+                        disabled={!formData.googleDriveAuthenticated && !formData.awsS3Authenticated}
                     />
                     <Typography variant="h6" style={{marginTop: 24}}>
                         自動的に同期
@@ -154,7 +165,7 @@ const OptionsView: React.FC = () => {
                             <Switch checked={formData.autoSync} onChange={onChangeSettings} color={'primary'}/>
                         }
                         label={formData.autoSync ? '自動的に同期する' : '手動で同期する'}
-                        disabled={!formData.googleDriveAuthenticated && !formData.awsAuthenticated}
+                        disabled={!formData.googleDriveAuthenticated && !formData.awsS3Authenticated}
                     />
                     <Typography variant="h6" style={{marginTop: 24}}>
                         自動同期間隔
@@ -172,7 +183,7 @@ const OptionsView: React.FC = () => {
                 <Divider style={{marginBottom: 24}}/>
                 <Typography variant="h5">ストレージサービス設定</Typography>
                 <TabContext value={Services[settingsRef.current.currentService]}>
-                    <TabList centered>
+                    <TabList onChange={onChangeCurrentService} centered>
                         <Tab label="AWS S3" value={Services[Services.AwsS3]}/>
                         <Tab label="Google Drive" value={Services[Services.GoogleDrive]}/>
                     </TabList>
@@ -181,27 +192,27 @@ const OptionsView: React.FC = () => {
                             <Typography variant="h6">
                                 AWS Access Key ID
                             </Typography>
-                            <TextField name={"awsAccessKeyId"} value={formData.awsAccessKeyId}
+                            <TextField name={"awsS3AccessKeyId"} value={formData.awsS3AccessKeyId}
                                        onChange={onChangeSettings} fullWidth/>
                             <Typography variant="h6">
                                 AWS Secret Access Key
                             </Typography>
-                            <TextField name={"awsSecretAccessKey"} value={formData.awsSecretAccessKey}
+                            <TextField name={"awsS3SecretAccessKey"} value={formData.awsS3SecretAccessKey}
                                        onChange={onChangeSettings} fullWidth/>
                             <Typography variant="h6">
                                 AWS Region
                             </Typography>
-                            <TextField name={"awsRegion"} value={formData.awsRegion} onChange={onChangeSettings}
+                            <TextField name={"awsS3Region"} value={formData.awsS3Region} onChange={onChangeSettings}
                                        fullWidth/>
                             <Typography variant="h6" style={{marginTop: 24}}>
                                 AWS S3 サービスとの接続
                             </Typography>
                             <FormControlLabel
                                 control={
-                                    <Switch checked={formData.awsAuthenticated} onChange={onChangeAwsS3Connection} color={'primary'}/>
+                                    <Switch checked={formData.awsS3Authenticated} onChange={onChangeAwsS3Connection} color={'primary'}/>
                                 }
-                                disabled={!formData.awsAccessKeyId || !formData.awsSecretAccessKey || !formData.awsRegion}
-                                label={formData.awsAuthenticated ? '接続済み' : '未接続'}
+                                disabled={!formData.awsS3AccessKeyId || !formData.awsS3SecretAccessKey || !formData.awsS3Region}
+                                label={formData.awsS3Authenticated ? '接続済み' : '未接続'}
                             />
                         </div>
                     </TabPanel>

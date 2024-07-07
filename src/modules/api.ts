@@ -1,4 +1,5 @@
 import * as qs from 'qs';
+import {ListBucketsCommand, S3Client } from "@aws-sdk/client-s3";
 
 import {Settings} from './settings';
 import urlJoin from 'url-join';
@@ -28,11 +29,7 @@ export class Api {
         }
         init.headers = headers;
 
-        console.log(url);
-        console.log(init);
-        const response = await fetch(url, init);
-        console.log(response);
-        return response;
+        return await fetch(url, init);
     }
 
     public async get(api: string, params: string | {}, headers: HeadersInit = {}) {

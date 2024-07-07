@@ -1,9 +1,10 @@
 import {sha256} from 'js-sha256';
 
-import {Api, GoogleDriveApi} from './api';
+import {GoogleDriveApi} from './api';
 import {Services} from "./enums";
 import {DirectoryNotFoundError, InvalidJsonException} from "./exceptions";
 import {Settings} from "./settings";
+import {ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 
 type FileObject = any;
 
@@ -17,7 +18,6 @@ export class FileInfo {
 
 export abstract class Storage {
     public settings: Settings;
-    protected abstract api: Api;
 
     protected constructor(settings: Settings) {
         this.settings = settings;
@@ -189,11 +189,24 @@ export class GoogleDriveStorage extends Storage {
 }
 
 export class AwsS3DriveStorage extends Storage {
-    protected api: GoogleDriveApi;
+    private readonly client: S3Client;
+    private readonly bucketName: string = '';
+    private readonly folderName: string = '';
 
     constructor(settings: Settings) {
         super(settings);
-        this.api = new GoogleDriveApi(this.settings);
+        this.client = new S3Client({
+            region: settings.awsS3Region,
+            credentials: {
+                accessKeyId: settings.awsS3AccessKeyId,
+                secretAccessKey: settings.awsS3SecretAccessKey,
+            },
+        });
+        const m = settings.folderName.match(/^([^/]+)(\/.*)$/);
+        if (m) {
+            this.bucketName = m[1];
+            this.folderName = m[2];
+        }
     }
 
     public async lsFile(filename: string, parent?: FileInfo | string): Promise<FileInfo> {
@@ -221,6 +234,18 @@ export class AwsS3DriveStorage extends Storage {
     }
 
     public async authenticate(): Promise<string> {
+        const command = new ListBucketsCommand({});
+        try {
+            const { Owner, Buckets } = await this.client.send(command);
+            if (Owner && Buckets) {
+                if (Buckets?.map(it => it.Name).includes(this.bucketName)) {
+                    console.log("list buckets", Owner, Buckets);
+                    return 'OK';
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
         return '';
     }
 }
