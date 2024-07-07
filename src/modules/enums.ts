@@ -1,3 +1,3 @@
 export enum Services {
-    gdrive,
+    GoogleDrive = 0,
 }

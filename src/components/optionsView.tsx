@@ -13,23 +13,25 @@ import {
     Select,
     SelectChangeEvent,
     Switch,
+    Tab,
     TextField,
     Typography
 } from '@mui/material';
+import {TabContext, TabList, TabPanel} from '@mui/lab';
 import HelpIcon from '@mui/icons-material/HelpOutline';
 
 import {Message, MessageType, Services, Settings, Storage} from '../modules';
 
 const OptionsView: React.FC = () => {
     const [settingsPrepared, setSettingsPrepared] = useState(false);
-    const [currentService, setCurrentService] = useState(Services.gdrive);
+    const [currentService, setCurrentService] = useState(Services.GoogleDrive);
     const [folderName, setFolderName] = useState('cloud_marks');
     const [autoSyncOnBoot, setAutoSyncOnBoot] = useState(false);
     const [autoSync, setAutoSync] = useState(false);
     const [autoSyncInterval, setAutoSyncInterval] = useState(60);
     const [apiKey, setApiKey] = useState('');
     const [authenticated, setAuthenticated] = useState(false);
-    const [helpApiKeyOpened, setHelpApiKeyOpened] = useState(false);
+    const [helpGoogleDriveApiKeyOpened, setHelpGoogleDriveApiKeyOpened] = useState(false);
 
     let settings = new Settings();
 
@@ -153,51 +155,49 @@ const OptionsView: React.FC = () => {
                 </div>
                 <Divider style={{marginBottom: 24}}/>
                 <Typography variant="h5">ストレージサービス設定</Typography>
-                {/*
-                <Tabs value={currentService}
-                      onChange={(_, value) => onSelectedServiceChanged(value)}
-                      fullWidth>
-                    <Tab label="Google Drive" value={Services.gdrive} />
-                    <Tab label="DropBox" value={1} />
-                </Tabs>
-                */}
-                {currentService === Services.gdrive && (
-                    <div style={{padding: 24}}>
-                        <Typography variant="h6">
-                            Google Drive API キー
-                            <HelpIcon style={{fontSize: 16}} onClick={() => setHelpApiKeyOpened(true)}/>
-                        </Typography>
-                        <TextField value={apiKey} onChange={onChangeApiKey} fullWidth/>
-                        <Dialog open={helpApiKeyOpened} onClick={() => setHelpApiKeyOpened(false)}>
-                            <DialogContent>
-                                <DialogContentText>
-                                    <Typography>
-                                        <a href="https://console.developers.google.com/" target="_blank">Google API
-                                            Console</a> から
-                                        Google Drive フルアクセス権限（scope "https://www.googleapis.com/auth/drive"）を
-                                        セットした API キーを取得してください．
-                                    </Typography>
-                                    <MenuList>
-                                        <MenuItem onClick={setDefaultApiKey}>
-                                            とりあえずデフォルトのキーを使う（たぶん接続時に警告が出ます）
-                                        </MenuItem>
-                                    </MenuList>
-                                </DialogContentText>
-                            </DialogContent>
-                        </Dialog>
+                <TabContext value={Services[settings.currentService]}>
+                    <TabList centered>
+                        <Tab label="Google Drive" value={Services[Services.GoogleDrive]}/>
+                    </TabList>
+                    <TabPanel value={Services[Services.GoogleDrive]}>
+                        <div style={{padding: 24}}>
+                            <Typography variant="h6">
+                                Google Drive API キー
+                                <HelpIcon style={{fontSize: 16}} onClick={() => setHelpGoogleDriveApiKeyOpened(true)}/>
+                            </Typography>
+                            <TextField value={apiKey} onChange={onChangeApiKey} fullWidth/>
+                            <Dialog open={helpGoogleDriveApiKeyOpened} onClick={() => setHelpGoogleDriveApiKeyOpened(false)}>
+                                <DialogContent>
+                                    <DialogContentText>
+                                        <Typography>
+                                            <a href="https://console.developers.google.com/" target="_blank">Google API
+                                                Console</a> から
+                                            Google Drive フルアクセス権限（scope
+                                            "https://www.googleapis.com/auth/drive"）を
+                                            セットした API キーを取得してください．
+                                        </Typography>
+                                        <MenuList>
+                                            <MenuItem onClick={setDefaultApiKey}>
+                                                とりあえずデフォルトのキーを使う（たぶん接続時に警告が出ます）
+                                            </MenuItem>
+                                        </MenuList>
+                                    </DialogContentText>
+                                </DialogContent>
+                            </Dialog>
 
-                        <Typography variant="h6" style={{marginTop: 24}}>
-                            Google Drive サービスとの接続
-                        </Typography>
-                        <FormControlLabel
-                            control={
-                                <Switch checked={authenticated} onChange={onChangeCloudAuth} color={'primary'}/>
-                            }
-                            disabled={apiKey === ''}
-                            label={authenticated ? '接続済み' : '未接続'}
-                        />
-                    </div>
-                )}
+                            <Typography variant="h6" style={{marginTop: 24}}>
+                                Google Drive サービスとの接続
+                            </Typography>
+                            <FormControlLabel
+                                control={
+                                    <Switch checked={authenticated} onChange={onChangeCloudAuth} color={'primary'}/>
+                                }
+                                disabled={apiKey === ''}
+                                label={authenticated ? '接続済み' : '未接続'}
+                            />
+                        </div>
+                    </TabPanel>
+                </TabContext>
                 <Divider/>
             </div>
         </ThemeProvider>

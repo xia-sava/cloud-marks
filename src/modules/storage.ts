@@ -1,6 +1,6 @@
 import {sha256} from 'js-sha256';
 
-import {Api, GDriveApi} from './api';
+import {Api, GoogleDriveApi} from './api';
 import {Services} from "./enums";
 import {DirectoryNotFoundError, InvalidJsonException} from "./exceptions";
 import {Settings} from "./settings";
@@ -25,7 +25,7 @@ export abstract class Storage {
 
     static factory(settings: Settings): Storage {
         return {
-            [Services.gdrive]: () => new GDriveStorage(settings),
+            [Services.GoogleDrive]: () => new GoogleDriveStorage(settings),
         }[settings.currentService]();
     }
 
@@ -77,12 +77,12 @@ export abstract class Storage {
     }
 }
 
-export class GDriveStorage extends Storage {
-    protected api: GDriveApi;
+export class GoogleDriveStorage extends Storage {
+    protected api: GoogleDriveApi;
 
     constructor(settings: Settings) {
         super(settings);
-        this.api = new GDriveApi(this.settings);
+        this.api = new GoogleDriveApi(this.settings);
     }
 
     public async lsFile(filename: string, parent: FileInfo | string | null = null): Promise<FileInfo> {

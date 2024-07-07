@@ -33,13 +33,13 @@ export abstract class ServiceSetting {
     }
 }
 
-export class GDriveServiceSetting extends ServiceSetting {
+export class GoogleDriveServiceSetting extends ServiceSetting {
     public defaultApiKey = '974355595437-vach47on7c5mpnkfrpmehlgvdnn9ih2e.apps.googleusercontent.com';
 }
 
 export class Settings {
 
-    public currentService: Services = Services.gdrive;
+    public currentService: Services = Services.GoogleDrive;
 
     public serviceSettings: ServiceSetting[] = [];
     public folderName: string = 'cloud_marks';
@@ -52,7 +52,7 @@ export class Settings {
 
 
     public constructor() {
-        this.serviceSettings[Services.gdrive] = new GDriveServiceSetting();
+        this.serviceSettings[Services.GoogleDrive] = new GoogleDriveServiceSetting();
     }
 
 
@@ -90,8 +90,8 @@ export class Settings {
                 for (const service in Services) {
                     const settings = that.serviceSettings[service] || {};
                     switch (+service) {
-                        case Services.gdrive:
-                            that.serviceSettings[service] = plainToClass(GDriveServiceSetting, settings);
+                        case Services.GoogleDrive:
+                            that.serviceSettings[service] = plainToClass(GoogleDriveServiceSetting, settings);
                     }
                 }
             }

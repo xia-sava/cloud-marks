@@ -63,7 +63,7 @@ export class Api {
     }
 }
 
-export class GDriveApi extends Api {
+export class GoogleDriveApi extends Api {
     protected baseUrl = 'https://www.googleapis.com/drive/v3';
     protected uploadUrl = 'https://www.googleapis.com/upload/drive/v3';
     protected authUrl = 'https://accounts.google.com/o/oauth2/auth';
