@@ -136,7 +136,7 @@ export class Main {
             }
             Main.status.message = message;
         }
-        catch (e) {
+        catch (e: any) {
             console.log(e, e.stack);
             if (e instanceof ApplicationError) {
                 Main.status.error = e.message;

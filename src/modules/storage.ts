@@ -1,4 +1,4 @@
-import * as CryptoJS from 'crypto-js';
+import { sha256 } from 'js-sha256';
 
 import {Api, GDriveApi} from './api';
 import {Services} from "./enums";
@@ -27,13 +27,13 @@ export abstract class Storage {
             [Services.gdrive]: () => new GDriveStorage(settings),
         }[settings.currentService]();
     }
-    public abstract async lsFile(filename: string, parent?: FileInfo | string): Promise<FileInfo>;
-    public abstract async lsDir(filename: string, parent?: FileInfo | string): Promise<FileInfo[]>;
-    public abstract async mkdir(dirName: string, parent?: FileInfo | string): Promise<FileInfo>;
-    public abstract async create(filename: string, parent?: FileInfo | string, contents?: any): Promise<FileInfo>;
-    public abstract async write(fileInfo: FileInfo, contents: any): Promise<FileInfo>;
-    public abstract async read(fileInfo: FileInfo): Promise<any>;
-    public abstract async authenticate(): Promise<string>;
+    public abstract lsFile(filename: string, parent?: FileInfo | string): Promise<FileInfo>;
+    public abstract lsDir(filename: string, parent?: FileInfo | string): Promise<FileInfo[]>;
+    public abstract mkdir(dirName: string, parent?: FileInfo | string): Promise<FileInfo>;
+    public abstract create(filename: string, parent?: FileInfo | string, contents?: any): Promise<FileInfo>;
+    public abstract write(fileInfo: FileInfo, contents: any): Promise<FileInfo>;
+    public abstract read(fileInfo: FileInfo): Promise<any>;
+    public abstract authenticate(): Promise<string>;
 
     public async writeContents(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
         const contentsWithHash = {
@@ -65,7 +65,7 @@ export abstract class Storage {
     }
 
     protected hashContents(contents: any): string {
-        return CryptoJS.SHA256(JSON.stringify(contents)).toString(CryptoJS.enc.Hex);
+        return sha256(JSON.stringify(contents));
     }
 }
 
