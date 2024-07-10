@@ -24,19 +24,21 @@ import {Message, MessageType, Services, Settings, Storage} from '../modules';
 const OptionsView: React.FC = () => {
     const [settingsPrepared, setSettingsPrepared] = useState(false);
     const [helpGoogleDriveApiKeyOpened, setHelpGoogleDriveApiKeyOpened] = useState(false);
-    const settingTmpl = new Settings();
-    const [formData, setFormData] = useState({
-        folderName: settingTmpl.folderName,
-        currentService: settingTmpl.currentService,
-        autoSyncOnBoot: settingTmpl.autoSyncOnBoot,
-        autoSync: settingTmpl.autoSync,
-        autoSyncInterval: settingTmpl.autoSyncInterval,
-        googleDriveApiKey: settingTmpl.googleDriveApiKey,
-        googleDriveAuthenticated: settingTmpl.googleDriveAuthenticated,
-        awsS3AccessKeyId: settingTmpl.awsS3AccessKeyId,
-        awsS3SecretAccessKey: settingTmpl.awsS3SecretAccessKey,
-        awsS3Region: settingTmpl.awsS3Region,
-        awsS3Authenticated: settingTmpl.awsS3Authenticated,
+    const [formData, setFormData] = useState(() => {
+        const settingTmpl = new Settings();
+        return {
+            folderName: settingTmpl.folderName,
+            currentService: settingTmpl.currentService,
+            autoSyncOnBoot: settingTmpl.autoSyncOnBoot,
+            autoSync: settingTmpl.autoSync,
+            autoSyncInterval: settingTmpl.autoSyncInterval,
+            googleDriveApiKey: settingTmpl.googleDriveApiKey,
+            googleDriveAuthenticated: settingTmpl.googleDriveAuthenticated,
+            awsS3AccessKeyId: settingTmpl.awsS3AccessKeyId,
+            awsS3SecretAccessKey: settingTmpl.awsS3SecretAccessKey,
+            awsS3Region: settingTmpl.awsS3Region,
+            awsS3Authenticated: settingTmpl.awsS3Authenticated,
+        };
     });
     const settingsRef = useRef(new Settings());
 
@@ -62,15 +64,17 @@ const OptionsView: React.FC = () => {
 
     const onChangeSettings = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const {name, value} = event.target;
-        const settings = settingsRef.current;
-        if (name in settings) {
-            (settings as any)[name] = value;
-            await settings.save()
-        }
         setFormData((prevState) => ({
             ...prevState,
             [name]: value,
         }));
+        (async () => {
+            const settings = settingsRef.current;
+            if (name in settings) {
+                (settings as any)[name] = value;
+                await settings.save()
+            }
+        })().then();
     };
 
     const onChangeGoogleDriveConnection = async (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
