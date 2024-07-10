@@ -4,7 +4,7 @@ const TerserPlugin = require("terser-webpack-plugin");
 module.exports = {
     context: __dirname,
     entry: {
-        background: "./src/actions/background.ts",
+        service_worker: "./src/actions/service_worker.ts",
         options: "./src/actions/options.tsx",
         popup: "./src/actions/popup.tsx",
     },
