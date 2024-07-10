@@ -2,6 +2,7 @@ import * as React from 'react';
 import {SyntheticEvent, useEffect, useRef, useState} from 'react';
 import {createTheme, ThemeProvider} from '@mui/material/styles';
 import {
+    Alert,
     CircularProgress,
     Dialog,
     DialogContent,
@@ -40,6 +41,10 @@ const OptionsView: React.FC = () => {
             awsS3Authenticated: settingTmpl.awsS3Authenticated,
         };
     });
+    const [connectionError, setConnectionError] = useState({
+        googleDrive: '',
+        awsS3: '',
+    })
     const settingsRef = useRef(new Settings());
 
     useEffect(() => {
@@ -81,7 +86,16 @@ const OptionsView: React.FC = () => {
         const settings = settingsRef.current;
         if (checked) {
             const storage = Storage.factory(settings);
-            settings.googleDriveAuthInfo = await storage.authenticate();
+            let message = '';
+            try {
+                settings.googleDriveAuthInfo = await storage.authenticate();
+            } catch (e: any) {
+                message = e.message;
+            }
+            setConnectionError((prevState) => ({
+                ...prevState,
+                googleDrive: message,
+            }));
         } else {
             settings.googleDriveAuthInfo = '';
         }
@@ -96,7 +110,16 @@ const OptionsView: React.FC = () => {
         const settings = settingsRef.current;
         if (checked) {
             const storage = Storage.factory(settings);
-            settings.awsS3AuthInfo = await storage.authenticate();
+            let message = '';
+            try {
+                settings.awsS3AuthInfo = await storage.authenticate();
+            } catch (e: any) {
+                message = e.message;
+            }
+            setConnectionError((prevState) => ({
+                ...prevState,
+                awsS3: message,
+            }));
         } else {
             settings.awsS3AuthInfo = '';
         }
@@ -219,6 +242,11 @@ const OptionsView: React.FC = () => {
                                 disabled={!formData.awsS3AccessKeyId || !formData.awsS3SecretAccessKey || !formData.awsS3Region}
                                 label={formData.awsS3Authenticated ? '接続済み' : '未接続'}
                             />
+                            {connectionError.awsS3 && (
+                                <Alert severity="error" style={{ marginTop: 16 }}>
+                                    {connectionError.awsS3}
+                                </Alert>
+                            )}
                         </div>
                     </TabPanel>
                     <TabPanel value={Services[Services.GoogleDrive]}>
@@ -255,6 +283,11 @@ const OptionsView: React.FC = () => {
                                 disabled={formData.googleDriveApiKey === ''}
                                 label={formData.googleDriveAuthenticated ? '接続済み' : '未接続'}
                             />
+                            {connectionError.googleDrive && (
+                                <Alert severity="error" style={{ marginTop: 16 }}>
+                                    {connectionError.googleDrive}
+                                </Alert>
+                            )}
                         </div>
                     </TabPanel>
                 </TabContext>

@@ -270,12 +270,12 @@ export class Marks {
         if (!this.remoteFile || !this.remoteFileCreated) {
             const storage = await this.getStorage();
 
-            let remoteFiles = await storage.listDir();
-            remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
+            const remoteFiles = (await storage.listDir())
+                .filter((f) => f.filename.match(/bookmarks\.\d+\.json$/))
+                .sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
             if (remoteFiles.length === 0) {
                 throw new FileNotFoundError('ブックマークがまだ保存されていません');
             }
-            remoteFiles.sort((a, b) => (a.filename < b.filename) ? -1 : (a.filename > b.filename) ? 1 : 0);
             this.remoteFile = remoteFiles[remoteFiles.length - 1];
             this.remoteFileCreated = 0;
             const match = this.remoteFile.filename.match(/\d+/);

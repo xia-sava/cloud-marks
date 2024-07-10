@@ -181,16 +181,11 @@ export class AwsS3DriveStorage extends Storage {
 
     public async authenticate(): Promise<string> {
         const command = new ListBucketsCommand({});
-        try {
-            const {Owner, Buckets} = await this.client.send(command);
-            if (Owner && Buckets) {
-                if (Buckets?.map(it => it.Name).includes(this.bucketName)) {
-                    console.log("list buckets", Owner, Buckets);
-                    return 'OK';
-                }
+        const {Owner, Buckets} = await this.client.send(command);
+        if (Owner && Buckets) {
+            if (Buckets?.map(it => it.Name).includes(this.bucketName)) {
+                return 'OK';
             }
-        } catch (e) {
-            console.error(e);
         }
         return '';
     }
@@ -237,6 +232,7 @@ export class AwsS3DriveStorage extends Storage {
             const {Contents} = await this.client.send(command);
             return (Contents ?? []).map((it) => new FileInfo(it.Key ?? '', it));
         } catch (e) {
+            console.error(e);
             if (e instanceof S3ServiceException && e.name === 'NoSuchKey') {
                 // キーが存在しないので空を返す
             } else {

@@ -10,7 +10,7 @@ export class ApplicationError implements Error {
 }
 
 export class FileNotFoundError extends ApplicationError {
-    public name = 'DirectoryNotFoundError';
+    public name = 'FileNotFoundError';
 }
 
 export class DirectoryNotFoundError extends ApplicationError {
