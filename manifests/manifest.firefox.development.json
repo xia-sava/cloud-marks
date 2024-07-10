@@ -2,7 +2,7 @@
 
   "manifest_version": 2,
   "name": "Cloud Marks",
-  "version": "0.2.1",
+  "version": "0.3.0",
 
   "description": "This extension provide the function to export or import bookmarks with cloud storage services.",
   "author": "xia@silvia.com",
