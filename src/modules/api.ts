@@ -1,5 +1,4 @@
 import * as qs from 'qs';
-import {ListBucketsCommand, S3Client } from "@aws-sdk/client-s3";
 
 import {Settings} from './settings';
 import urlJoin from 'url-join';
@@ -69,7 +68,6 @@ export class GoogleDriveApi extends Api {
     constructor(settings: Settings) {
         super(settings);
         this.clientID = settings.googleDriveApiKey;
-        console.log("Api", this);
     }
 
     public async authenticate(): Promise<string> {
@@ -108,7 +106,9 @@ export class GoogleDriveApi extends Api {
         if (response.status === 401) {
             this.settings.googleDriveAuthInfo = await this.authenticate();
             this.settings.save().then();
-            (init.headers as { [key: string]: string })['Authorization'] = `Bearer ${this.settings.googleDriveAuthInfo}`;
+            (init.headers as {
+                [key: string]: string
+            })['Authorization'] = `Bearer ${this.settings.googleDriveAuthInfo}`;
             response = await super.fetch(url, init);
         }
         return response;

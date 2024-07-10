@@ -2,9 +2,16 @@ import {sha256} from 'js-sha256';
 
 import {GoogleDriveApi} from './api';
 import {Services} from "./enums";
-import {DirectoryNotFoundError, InvalidJsonException} from "./exceptions";
+import {InvalidJsonException} from "./exceptions";
 import {Settings} from "./settings";
-import {ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+    GetObjectCommand,
+    ListBucketsCommand,
+    ListObjectsV2Command,
+    PutObjectCommand,
+    S3Client,
+    S3ServiceException
+} from '@aws-sdk/client-s3';
 
 type FileObject = any;
 
@@ -30,30 +37,22 @@ export abstract class Storage {
         }[settings.currentService]();
     }
 
-    public abstract lsFile(filename: string, parent?: FileInfo | string): Promise<FileInfo>;
-
-    public abstract lsDir(filename: string, parent?: FileInfo | string): Promise<FileInfo[]>;
-
-    public abstract mkdir(dirName: string, parent?: FileInfo | string): Promise<FileInfo>;
-
-    public abstract create(filename: string, parent?: FileInfo | string, contents?: any): Promise<FileInfo>;
-
-    public abstract write(fileInfo: FileInfo, contents: any): Promise<FileInfo>;
-
-    public abstract read(fileInfo: FileInfo): Promise<any>;
-
     public abstract authenticate(): Promise<string>;
 
-    public async writeContents(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
+    public async listDir(): Promise<FileInfo[]> {
+        return await this.ls();
+    }
+
+    public async createFile(filename: string, contents?: any): Promise<FileInfo> {
         const contentsWithHash = {
             version: 2,
             hash: this.hashContents(contents),
             contents: contents,
         };
-        return await this.write(fileInfo, contentsWithHash);
+        return await this.write(filename, contentsWithHash);
     }
 
-    public async readContents(fileInfo: FileInfo): Promise<any> {
+    public async readFile(fileInfo: FileInfo): Promise<any> {
         const json = await this.read(fileInfo);
         if (!('version' in json && 'contents' in json)) {
             throw new InvalidJsonException('読込みデータの形式が不正です');
@@ -73,7 +72,13 @@ export abstract class Storage {
         return json.contents;
     }
 
-    protected hashContents(contents: any): string {
+    protected abstract write(filename: string, contents: any): Promise<FileInfo>;
+
+    protected abstract read(fileInfo: FileInfo): Promise<any>;
+
+    protected abstract ls(): Promise<FileInfo[]>;
+
+    private hashContents(contents: any): string {
         return sha256(JSON.stringify(contents));
     }
 }
@@ -86,32 +91,31 @@ export class GoogleDriveStorage extends Storage {
         this.api = new GoogleDriveApi(this.settings);
     }
 
-    public async lsFile(filename: string, parent: FileInfo | string | null = null): Promise<FileInfo> {
-        parent = await this.findDirectory(parent);
-        const query = {
-            q: [
-                `name = '${filename}'`,
-                `'${parent.fileObject.id}' in parents`,
-                `trashed = false`
-            ].join(' and '),
-        };
-        const response = await this.api.get('files', query);
-        const json = await response.json();
-        console.log(json);
-        if (json.files.length == 0) {
-            return new FileInfo('', {});
-        }
-        return new FileInfo(json.files[0].name, json.files[0]);
+    public async write(filename: string, contents: any): Promise<FileInfo> {
+        const parentId = await this.getFolderId() ?? await this.createFolder();
+        const createResponse = await this.api.post('files', {
+            name: filename,
+            parents: [parentId],
+            mimeType: 'application/json',
+            fields: 'id',
+        });
+        const createJson = await createResponse.json();
+
+        const writeResponse = await this.api.patch(`upload/files/${createJson.id}?uploadType=media`, contents);
+        const writeJson = await writeResponse.json();
+        return new FileInfo(writeJson.name, writeJson);
     }
 
-    public async lsDir(dirName: string, parent: FileInfo | string | null = null): Promise<FileInfo[]> {
-        const dirInfo = await this.lsFile(dirName, parent);
-        if (!dirInfo.filename) {
-            return [];
-        }
+    public async read(fileInfo: FileInfo): Promise<any> {
+        const fileId = fileInfo.fileObject.id;
+        const response = await this.api.get(`files/${fileId}`, {alt: 'media'});
+        return await response.json();
+    }
+
+    public async ls(): Promise<FileInfo[]> {
         const query = {
             q: [
-                `'${dirInfo.fileObject.id}' in parents`,
+                `'${await this.getFolderId()}' in parents`,
                 `trashed = false`
             ].join(' and '),
         };
@@ -121,70 +125,36 @@ export class GoogleDriveStorage extends Storage {
         return json.files.map((file: FileObject) => new FileInfo(file.name, file));
     }
 
-    public async mkdir(dirName: string, parent: FileInfo | string | null = null): Promise<FileInfo> {
-        parent = await this.findDirectory(parent);
+    public async authenticate(): Promise<string> {
+        return await this.api.authenticate();
+    }
+
+    private async getFolderId(): Promise<string | null> {
+        const query = {
+            q: [
+                `name = '${this.settings.folderName}'`,
+                `'root' in parents`,
+                `trashed = false`,
+            ].join(' and '),
+        };
+        const response = await this.api.get('files', query);
+        const json = await response.json();
+        if (json.files.length == 0) {
+            return null;
+        }
+        return json.files[0].id;
+    }
+
+    private async createFolder(): Promise<string> {
         const body = {
-            name: dirName,
-            parents: parent.fileObject.id,
+            name: this.settings.folderName,
+            parents: 'root',
             mimeType: 'application/vnd.google-apps.folder',
             fields: 'id',
         };
         const response = await this.api.post('files', body);
         const json = await response.json();
-        console.log(json);
-        return new FileInfo(json.name, json);
-    }
-
-    public async create(filename: string, parent: FileInfo | string | null = null, contents: any): Promise<FileInfo> {
-        parent = await this.findDirectory(parent);
-        const body = {
-            name: filename,
-            parents: [parent.fileObject.id],
-            mimeType: 'application/json',
-            fields: 'id',
-        };
-        const response = await this.api.post('files', body);
-        const json = await response.json();
-        console.log(json);
-
-        const fileInfo = new FileInfo(json.name, json);
-        if (contents) {
-            return await this.writeContents(fileInfo, contents);
-        } else {
-            return fileInfo;
-        }
-    }
-
-    public async write(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
-        const fileId = fileInfo.fileObject.id;
-        const response = await this.api.patch(`upload/files/${fileId}?uploadType=media`, contents);
-        const json = await response.json();
-        return new FileInfo(json.name, json);
-    }
-
-    public async read(fileInfo: FileInfo): Promise<any> {
-        const fileId = fileInfo.fileObject.id;
-        const response = await this.api.get(`files/${fileId}`, {alt: 'media'});
-        return await response.json();
-    }
-
-    public async authenticate(): Promise<string> {
-        return await this.api.authenticate();
-    }
-
-    private async findDirectory(dirInfo: FileInfo | string | null): Promise<FileInfo> {
-        if (dirInfo === null) {
-            return new FileInfo("root", {id: "root"})
-        } else if (typeof dirInfo === 'string') {
-            const dirName = dirInfo;
-            dirInfo = await this.lsFile(dirInfo);
-            if (!dirInfo.filename) {
-                throw new DirectoryNotFoundError(`ディレクトリ ${dirName} が見つかりません`);
-            }
-            return dirInfo;
-        } else {
-            return dirInfo;
-        }
+        return json.id;
     }
 }
 
@@ -202,41 +172,17 @@ export class AwsS3DriveStorage extends Storage {
                 secretAccessKey: settings.awsS3SecretAccessKey,
             },
         });
-        const m = settings.folderName.match(/^([^/]+)(\/.*)$/);
+        const m = settings.folderName.match(/^([^/]+)\/(.*)$/);
         if (m) {
             this.bucketName = m[1];
             this.folderName = m[2];
         }
     }
 
-    public async lsFile(filename: string, parent?: FileInfo | string): Promise<FileInfo> {
-        return new FileInfo('', {});
-    }
-
-    public async lsDir(filename: string, parent?: FileInfo | string): Promise<FileInfo[]> {
-        return [];
-    }
-
-    public async mkdir(dirName: string, parent?: FileInfo | string): Promise<FileInfo> {
-        return new FileInfo('', {});
-    }
-
-    public async create(filename: string, parent?: FileInfo | string, contents?: any): Promise<FileInfo> {
-        return new FileInfo('', {});
-    }
-
-    public async write(fileInfo: FileInfo, contents: any): Promise<FileInfo> {
-        return new FileInfo('', {});
-    }
-
-    public async read(fileInfo: FileInfo): Promise<any> {
-        return {};
-    }
-
     public async authenticate(): Promise<string> {
         const command = new ListBucketsCommand({});
         try {
-            const { Owner, Buckets } = await this.client.send(command);
+            const {Owner, Buckets} = await this.client.send(command);
             if (Owner && Buckets) {
                 if (Buckets?.map(it => it.Name).includes(this.bucketName)) {
                     console.log("list buckets", Owner, Buckets);
@@ -247,5 +193,56 @@ export class AwsS3DriveStorage extends Storage {
             console.error(e);
         }
         return '';
+    }
+
+    protected async write(filename: string, contents: any): Promise<FileInfo> {
+        const command = new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: `${this.folderName}/${filename}`,
+            Body: JSON.stringify(contents),
+        });
+        try {
+            const file = await this.client.send(command);
+            return new FileInfo(filename, file);
+        } catch (e) {
+            console.error(e);
+        }
+        return new FileInfo('', {});
+    }
+
+    protected async read(fileInfo: FileInfo): Promise<any> {
+        const command = new GetObjectCommand({
+            Bucket: this.bucketName,
+            Key: `${this.folderName}/${fileInfo.filename}`,
+        });
+        try {
+            const {Body} = await this.client.send(command);
+            return JSON.parse(await Body?.transformToString() ?? '{}');
+        } catch (e) {
+            if (e instanceof S3ServiceException && e.name === 'NoSuchKey') {
+                // キーが存在しないので空を返す
+            } else {
+                console.error(e);
+            }
+        }
+        return {};
+    }
+
+    protected async ls(): Promise<FileInfo[]> {
+        const command = new ListObjectsV2Command({
+            Bucket: this.bucketName,
+            Prefix: `${this.folderName}/`,
+        });
+        try {
+            const {Contents} = await this.client.send(command);
+            return (Contents ?? []).map((it) => new FileInfo(it.Key ?? '', it));
+        } catch (e) {
+            if (e instanceof S3ServiceException && e.name === 'NoSuchKey') {
+                // キーが存在しないので空を返す
+            } else {
+                console.error(e);
+            }
+        }
+        return [];
     }
 }

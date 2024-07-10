@@ -167,6 +167,8 @@ export class Marks {
      * ブックマークをリモートJSONに保存する．
      */
     public async save(): Promise<void> {
+        const storage = await this.getStorage();
+
         // ローカルのブックマークを取得
         const marks = this.constructMarksFromBookmarks(await this.getBookmarkRoot());
 
@@ -174,16 +176,8 @@ export class Marks {
         const timeStamp = Date.now();
         const filename = `bookmarks.${timeStamp}.json`;
 
-        // 出力先ディレクトリがストレージになければ作成
-        const storage = await this.getStorage();
-        const folderName = storage.settings.folderName;
-        let folder = await storage.lsFile(folderName);
-        if (!folder.filename) {
-            folder = await storage.mkdir(folderName)
-        }
-
         // ファイル書き込み
-        await storage.create(filename, folder, marks);
+        await storage.createFile(filename, marks);
 
         // 最終セーブ日時保存
         storage.settings.lastSynced = timeStamp;
@@ -198,7 +192,7 @@ export class Marks {
 
         // ストレージの最新ファイルを取得
         const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile();
-        const remote = MarkTreeNode.fromJson(await storage.readContents(remoteFile));
+        const remote = MarkTreeNode.fromJson(await storage.readFile(remoteFile));
 
         // 差分を取って適用
         const bookmark = await this.getBookmarkRoot();
@@ -218,7 +212,7 @@ export class Marks {
 
         // ストレージの最新ファイルを取得してMarksにする．
         const {remoteFile, remoteFileCreated} = await this.getLatestRemoteFile();
-        const remote = MarkTreeNode.fromJson(await storage.readContents(remoteFile));
+        const remote = MarkTreeNode.fromJson(await storage.readFile(remoteFile));
 
         // ローカルブックマークもMarksにしてremoteをマージする．
         const bookmark = await this.getBookmarkRoot();
@@ -275,9 +269,8 @@ export class Marks {
         // ストレージのファイル一覧を取得して最新ファイルを取得
         if (!this.remoteFile || !this.remoteFileCreated) {
             const storage = await this.getStorage();
-            const folderName = storage.settings.folderName;
 
-            let remoteFiles = await storage.lsDir(folderName);
+            let remoteFiles = await storage.listDir();
             remoteFiles = remoteFiles.filter((f) => f.filename.match(/^bookmarks\.\d+\.json$/));
             if (remoteFiles.length === 0) {
                 throw new FileNotFoundError('ブックマークがまだ保存されていません');

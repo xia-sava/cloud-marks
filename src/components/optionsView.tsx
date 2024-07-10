@@ -87,7 +87,7 @@ const OptionsView: React.FC = () => {
             googleDriveAuthenticated: settings.googleDriveAuthenticated,
         }));
     };
-    
+
     const onChangeAwsS3Connection = async (_: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
         const settings = settingsRef.current;
         if (checked) {
@@ -209,7 +209,8 @@ const OptionsView: React.FC = () => {
                             </Typography>
                             <FormControlLabel
                                 control={
-                                    <Switch checked={formData.awsS3Authenticated} onChange={onChangeAwsS3Connection} color={'primary'}/>
+                                    <Switch checked={formData.awsS3Authenticated} onChange={onChangeAwsS3Connection}
+                                            color={'primary'}/>
                                 }
                                 disabled={!formData.awsS3AccessKeyId || !formData.awsS3SecretAccessKey || !formData.awsS3Region}
                                 label={formData.awsS3Authenticated ? '接続済み' : '未接続'}
