@@ -132,7 +132,7 @@ export class GoogleDriveStorage extends Storage {
     private async getFolderId(): Promise<string | null> {
         const query = {
             q: [
-                `name = '${this.settings.folderName}'`,
+                `name = '${this.settings.googleDriveFolderName}'`,
                 `'root' in parents`,
                 `trashed = false`,
             ].join(' and '),
@@ -147,7 +147,7 @@ export class GoogleDriveStorage extends Storage {
 
     private async createFolder(): Promise<string> {
         const body = {
-            name: this.settings.folderName,
+            name: this.settings.googleDriveFolderName,
             parents: 'root',
             mimeType: 'application/vnd.google-apps.folder',
             fields: 'id',
@@ -172,7 +172,7 @@ export class AwsS3DriveStorage extends Storage {
                 secretAccessKey: settings.awsS3SecretAccessKey,
             },
         });
-        const m = settings.folderName.match(/^([^/]+)\/(.*)$/);
+        const m = settings.awsS3FolderName.match(/^([^/]+)\/(.*)$/);
         if (m) {
             this.bucketName = m[1];
             this.folderName = m[2];

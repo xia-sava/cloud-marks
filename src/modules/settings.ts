@@ -13,11 +13,12 @@ export class Settings {
     public awsS3SecretAccessKey: string = '';
     public awsS3Region: string = 'ap-northeast-1';
     public awsS3AuthInfo: string = '';
+    public awsS3FolderName: string = '*/cloud_marks';
 
     public googleDriveApiKey: string = '';
     public googleDriveAuthInfo: string = '';
+    public googleDriveFolderName: string = 'cloud_marks';
 
-    public folderName: string = 'cloud_marks';
     public autoSyncOnBoot: boolean = false;
     public autoSync: boolean = false;
     public autoSyncInterval: number = 60;

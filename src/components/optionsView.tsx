@@ -28,17 +28,18 @@ const OptionsView: React.FC = () => {
     const [formData, setFormData] = useState(() => {
         const settingTmpl = new Settings();
         return {
-            folderName: settingTmpl.folderName,
             currentService: settingTmpl.currentService,
             autoSyncOnBoot: settingTmpl.autoSyncOnBoot,
             autoSync: settingTmpl.autoSync,
             autoSyncInterval: settingTmpl.autoSyncInterval,
             googleDriveApiKey: settingTmpl.googleDriveApiKey,
             googleDriveAuthenticated: settingTmpl.googleDriveAuthenticated,
+            googleDriveFolderName: settingTmpl.googleDriveFolderName,
             awsS3AccessKeyId: settingTmpl.awsS3AccessKeyId,
             awsS3SecretAccessKey: settingTmpl.awsS3SecretAccessKey,
             awsS3Region: settingTmpl.awsS3Region,
             awsS3Authenticated: settingTmpl.awsS3Authenticated,
+            awsS3FolderName: settingTmpl.awsS3FolderName,
         };
     });
     const [connectionError, setConnectionError] = useState({
@@ -51,17 +52,18 @@ const OptionsView: React.FC = () => {
         (async () => {
             const settings = await settingsRef.current.load();
             setFormData({
-                folderName: settings.folderName,
                 currentService: settings.currentService,
                 autoSyncOnBoot: settings.autoSyncOnBoot,
                 autoSync: settings.autoSync,
                 autoSyncInterval: settings.autoSyncInterval,
                 googleDriveApiKey: settings.googleDriveApiKey,
                 googleDriveAuthenticated: settings.googleDriveAuthenticated,
+                googleDriveFolderName: settings.googleDriveFolderName,
                 awsS3AccessKeyId: settings.awsS3AccessKeyId,
                 awsS3SecretAccessKey: settings.awsS3SecretAccessKey,
                 awsS3Region: settings.awsS3Region,
                 awsS3Authenticated: settings.awsS3Authenticated,
+                awsS3FolderName: settings.awsS3FolderName,
             });
             setSettingsPrepared(true);
         })();
@@ -171,8 +173,6 @@ const OptionsView: React.FC = () => {
                 <Divider/>
                 <Typography variant="h5">Cloud Marks 設定</Typography>
                 <div style={{padding: 24}}>
-                    <Typography variant="h6">サービス上のフォルダ名</Typography>
-                    <TextField name={"folderName"} value={formData.folderName} onChange={onChangeSettings} fullWidth/>
                     <Typography variant="h6" style={{marginTop: 24}}>
                         起動時に同期
                     </Typography>
@@ -231,6 +231,11 @@ const OptionsView: React.FC = () => {
                             </Typography>
                             <TextField name={"awsS3Region"} value={formData.awsS3Region} onChange={onChangeSettings}
                                        fullWidth/>
+                            <Typography variant="h6">
+                                サービス上のバケット名/フォルダ名
+                            </Typography>
+                            <TextField name={"awsS3FolderName"} value={formData.awsS3FolderName}
+                                       onChange={onChangeSettings} fullWidth/>
                             <Typography variant="h6" style={{marginTop: 24}}>
                                 AWS S3 サービスとの接続
                             </Typography>
@@ -243,7 +248,7 @@ const OptionsView: React.FC = () => {
                                 label={formData.awsS3Authenticated ? '接続済み' : '未接続'}
                             />
                             {connectionError.awsS3 && (
-                                <Alert severity="error" style={{ marginTop: 16 }}>
+                                <Alert severity="error" style={{marginTop: 16}}>
                                     {connectionError.awsS3}
                                 </Alert>
                             )}
@@ -271,6 +276,11 @@ const OptionsView: React.FC = () => {
                                     </DialogContentText>
                                 </DialogContent>
                             </Dialog>
+                            <Typography variant="h6">
+                                サービス上のフォルダ名
+                            </Typography>
+                            <TextField name={"googleDriveFolderName"} value={formData.googleDriveFolderName}
+                                       onChange={onChangeSettings} fullWidth/>
 
                             <Typography variant="h6" style={{marginTop: 24}}>
                                 Google Drive サービスとの接続
@@ -284,7 +294,7 @@ const OptionsView: React.FC = () => {
                                 label={formData.googleDriveAuthenticated ? '接続済み' : '未接続'}
                             />
                             {connectionError.googleDrive && (
-                                <Alert severity="error" style={{ marginTop: 16 }}>
+                                <Alert severity="error" style={{marginTop: 16}}>
                                     {connectionError.googleDrive}
                                 </Alert>
                             )}
