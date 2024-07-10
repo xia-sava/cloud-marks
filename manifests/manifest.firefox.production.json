@@ -8,7 +8,7 @@
   "author": "xia@silvia.com",
   "homepage_url": "https://github.com/xia-sava/cloud-marks",
 
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "{0B97FA0E-451B-11E8-A9DA-41A2F3E0CD91}"
     }
