@@ -208,7 +208,7 @@ export class AwsS3DriveStorage extends Storage {
     protected async read(fileInfo: FileInfo): Promise<any> {
         const command = new GetObjectCommand({
             Bucket: this.bucketName,
-            Key: `${this.folderName}/${fileInfo.filename}`,
+            Key: `${fileInfo.filename}`,
         });
         try {
             const {Body} = await this.client.send(command);
