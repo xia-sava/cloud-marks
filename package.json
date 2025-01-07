@@ -1,13 +1,13 @@
 {
   "name": "cloud_marks",
-  "version": "1.0.0",
+  "version": "0.3.1",
   "description": "",
   "main": "index.js",
   "scripts": {
     "watch": "./node_modules/.bin/webpack --watch --mode=development --devtool=inline-source-map",
     "build:prod": "./node_modules/.bin/webpack --mode=production && cp manifests/manifest.firefox.production.json dist/manifest.json",
     "build:dev": "./node_modules/.bin/webpack --mode=development --devtool=inline-source-map && cp manifests/manifest.firefox.development.json dist/manifest.json",
-    "release": "npm run build:prod && rm -fr release/* && zip -r release/firefox-submit.zip src package.json manifests tsconfig.json webpack.config.js && cp -r dist release/firefox && cd release/firefox && zip -r ../firefox.zip ./*",
+    "release": "npm run build:prod && rm -fr release/* && cp manifests/manifest.firefox.production.json manifest.json && zip -r release/firefox-submit.zip src package.json manifest.json tsconfig.json webpack.config.js && rm manifest.json && cp -r dist release/firefox && cd release/firefox && zip -r ../firefox.zip ./*",
     "clean": "rm -fr dist/js/* dist/manifest.json release/*"
   },
   "author": "xia@silvia.com",
